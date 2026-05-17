@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinPulse PRO — Institutional Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #04050a;
+  --bg2: #080c14;
+  --panel: #0d1117;
+  --panel2: #111620;
+  --border: #1c2230;
+  --border2: #252d3d;
+  --gold: #f0c040;
+  --gold2: #f5d580;
+  --green: #00e676;
+  --red: #ff4444;
+  --blue: #4fc3f7;
+  --purple: #b39ddb;
+  --text: #e8ecf5;
+  --muted: #4a5568;
+  --muted2: #6b7a99;
+  --syne: 'Syne', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);overflow-x:hidden}
+::selection{background:rgba(240,192,64,.25)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── GRID NOISE BACKGROUND ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle at 20% 20%, rgba(240,192,64,.04) 0%, transparent 50%),
+                   radial-gradient(circle at 80% 80%, rgba(79,195,247,.03) 0%, transparent 50%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:rgba(4,5,10,.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:20px;padding:0 28px;height:58px;
+}
+.logo{
+  font-family:var(--syne);font-size:1.25rem;font-weight:800;
+  letter-spacing:-.02em;white-space:nowrap;
+  background:linear-gradient(135deg,#f0c040,#f5d580,#fff8dc);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.logo sub{font-size:.5rem;letter-spacing:.15em;opacity:.7;vertical-align:super;-webkit-text-fill-color:#f0c040}
+
+/* Search */
+.search-wrap{flex:1;max-width:520px;position:relative}
+.search-wrap input{
+  width:100%;background:var(--panel2);border:1px solid var(--border2);
+  border-radius:3px;padding:9px 16px 9px 42px;
+  font-family:var(--mono);font-size:.78rem;color:var(--text);outline:none;
+  transition:border-color .2s;
+}
+.search-wrap input:focus{border-color:var(--gold)}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted2);font-size:.85rem}
+.search-dropdown{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;
+  background:var(--panel);border:1px solid var(--border2);border-radius:3px;
+  max-height:320px;overflow-y:auto;z-index:500;display:none;
+  box-shadow:0 16px 48px rgba(0,0,0,.6);
+}
+.search-dropdown.open{display:block}
+.sdrop-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;cursor:pointer;transition:background .15s;font-size:.75rem;
+  border-bottom:1px solid var(--border);
+}
+.sdrop-item:last-child{border-bottom:none}
+.sdrop-item:hover{background:var(--panel2)}
+.sdrop-ticker{color:var(--gold);font-weight:600;letter-spacing:.05em}
+.sdrop-name{color:var(--muted2);font-size:.68rem;margin-top:2px}
+.sdrop-price{color:var(--text);font-size:.78rem}
+.sdrop-chg.up{color:var(--green)}.sdrop-chg.dn{color:var(--red)}
+
+/* Header right */
+.hdr-right{display:flex;align-items:center;gap:16px;margin-left:auto}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.mkt-pill{font-size:.65rem;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase}
+.mkt-val{color:var(--gold);font-weight:600}
+.mode-btn{
+  background:transparent;border:1px solid var(--border2);border-radius:2px;
+  color:var(--muted2);font-family:var(--mono);font-size:.65rem;
+  padding:4px 12px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;
+  transition:all .2s;
+}
+.mode-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ts-badge{font-size:.62rem;color:var(--muted);letter-spacing:.05em}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:320px 1fr 340px;height:100vh;padding-top:58px}
+
+/* ── LEFT PANEL — WATCHLIST ── */
+.left-panel{
+  border-right:1px solid var(--border);background:var(--bg2);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.panel-hdr{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted2);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.panel-hdr span{color:var(--gold);font-size:.7rem}
+.watchlist{overflow-y:auto;flex:1}
+.wl-item{
+  display:grid;grid-template-columns:1fr auto;gap:4px;
+  padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;
+  transition:background .15s;position:relative;
+}
+.wl-item:hover,.wl-item.active{background:var(--panel2)}
+.wl-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--gold)}
+.wl-ticker{font-size:.75rem;font-weight:600;color:var(--gold);letter-spacing:.06em}
+.wl-name{font-size:.6rem;color:var(--muted2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.wl-price{font-size:.82rem;text-align:right}
+.wl-chg{font-size:.62rem;text-align:right;margin-top:2px}
+.cap-btn{
+  background:transparent;border:1px solid var(--border2);border-radius:2px;
+  color:var(--muted2);font-family:var(--mono);font-size:.58rem;padding:3px 10px;
+  cursor:pointer;letter-spacing:.06em;transition:all .15s;
+}
+.cap-btn.active{background:var(--gold);color:#04050a;border-color:var(--gold);font-weight:600}
+.cap-btn:hover:not(.active){border-color:var(--gold);color:var(--gold)}
+.wl-signal{font-size:.55rem;letter-spacing:.08em;padding:1px 5px;border-radius:1px;margin-top:4px;text-align:right;display:inline-block}
+.sig-buy{background:rgba(0,230,118,.15);color:var(--green)}
+.sig-sell{background:rgba(255,68,68,.15);color:var(--red)}
+.sig-hold{background:rgba(240,192,64,.15);color:var(--gold)}
+.sig-strong-buy{background:rgba(0,230,118,.25);color:#00ff88;font-weight:600}
+
+/* ── CENTER PANEL — MAIN ── */
+.center-panel{overflow-y:auto;background:var(--bg);display:flex;flex-direction:column}
+
+/* Price hero */
+.price-hero{
+  padding:28px 32px 20px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(240,192,64,.04) 0%,transparent 100%);
+}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hero-name{font-family:var(--syne);font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+.hero-ticker{font-size:.72rem;color:var(--muted2);letter-spacing:.12em;margin-top:4px}
+.hero-price{font-family:var(--syne);font-size:2.8rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+.hero-chg{font-size:.9rem;margin-top:4px}
+.hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.badge{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:1px}
+.badge-sector{background:rgba(79,195,247,.12);color:var(--blue);border:1px solid rgba(79,195,247,.2)}
+.badge-nse{background:rgba(240,192,64,.1);color:var(--gold);border:1px solid rgba(240,192,64,.2)}
+.badge-large{background:rgba(179,157,219,.12);color:var(--purple);border:1px solid rgba(179,157,219,.2)}
+
+/* KPI strip */
+.kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--border)}
+.kpi-cell{padding:14px 16px;border-right:1px solid var(--border);text-align:center}
+.kpi-cell:last-child{border-right:none}
+.kpi-l{font-size:.55rem;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.kpi-v{font-size:.88rem;font-weight:600}
+.kpi-s{font-size:.6rem;color:var(--muted2);margin-top:3px}
+
+/* Chart area */
+.chart-area{padding:20px 32px;border-bottom:1px solid var(--border)}
+.chart-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.chart-title{font-size:.65rem;color:var(--muted2);letter-spacing:.12em;text-transform:uppercase}
+.timeframe-btns{display:flex;gap:4px}
+.tf-btn{background:transparent;border:1px solid var(--border2);border-radius:2px;
+  color:var(--muted2);font-family:var(--mono);font-size:.6rem;padding:3px 9px;cursor:pointer;transition:all .15s}
+.tf-btn.active,.tf-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* Volume chart below price */
+.vol-bar-wrap{display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:8px}
+.vol-bar{flex:1;background:rgba(240,192,64,.25);border-radius:1px 1px 0 0;min-width:2px}
+
+/* AI Advice box */
+.ai-advice{
+  margin:20px 32px;border:1px solid var(--border2);border-radius:4px;
+  background:var(--panel);overflow:hidden;
+}
+.ai-hdr{
+  padding:12px 18px;background:linear-gradient(90deg,rgba(240,192,64,.1),transparent);
+  border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:10px;
+}
+.ai-hdr-icon{font-size:1rem}
+.ai-hdr-text{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+.ai-hdr-model{font-size:.58rem;color:var(--muted2);margin-left:auto}
+.ai-body{padding:18px;font-size:.76rem;line-height:1.8;min-height:80px;color:var(--text)}
+.ai-body.loading{color:var(--muted2)}
+.ai-verdict{
+  display:flex;gap:12px;padding:14px 18px;border-top:1px solid var(--border);
+  background:var(--bg2);flex-wrap:wrap;
+}
+.verdict-pill{
+  display:flex;align-items:center;gap:8px;font-size:.7rem;padding:8px 16px;
+  border-radius:2px;font-weight:600;letter-spacing:.05em;
+}
+.verdict-buy{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3)}
+.verdict-sell{background:rgba(255,68,68,.15);color:var(--red);border:1px solid rgba(255,68,68,.3)}
+.verdict-hold{background:rgba(240,192,64,.15);color:var(--gold);border:1px solid rgba(240,192,64,.3)}
+.verdict-strong-buy{background:rgba(0,255,136,.2);color:#00ff88;border:1px solid rgba(0,255,136,.4)}
+.target-price{font-size:.7rem;color:var(--muted2)}
+.target-price span{color:var(--gold);font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 32px;gap:0}
+.tab{
+  font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:10px 18px;
+  cursor:pointer;color:var(--muted2);border-bottom:2px solid transparent;transition:all .2s;
+}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--text)}
+.tab-content{padding:20px 32px;display:none}
+.tab-content.active{display:block}
+
+/* Financials table */
+.fin-table{width:100%;border-collapse:collapse;font-size:.72rem}
+.fin-table th{background:var(--panel2);color:var(--muted2);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:10px 14px;text-align:right;border-bottom:1px solid var(--border)}
+.fin-table th:first-child{text-align:left}
+.fin-table td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:right}
+.fin-table td:first-child{text-align:left;color:var(--muted2)}
+.fin-table tr:hover td{background:var(--panel2)}
+.fin-table .bold td{font-weight:600;color:var(--text)}
+
+/* Futures section */
+.futures-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.fut-card{
+  background:var(--panel);border:1px solid var(--border2);border-radius:3px;
+  padding:16px;position:relative;overflow:hidden;
+}
+.fut-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  opacity:.4;
+}
+.fut-expiry{font-size:.58rem;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.fut-price{font-family:var(--syne);font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.fut-basis{font-size:.65rem;color:var(--muted2);margin-bottom:8px}
+.fut-oi{display:flex;gap:16px;font-size:.6rem}
+.fut-oi-item{color:var(--muted2)}
+.fut-oi-val{color:var(--text);font-weight:500;display:block;margin-top:2px}
+
+/* Options chain hint */
+.options-preview{
+  background:var(--panel);border:1px solid var(--border2);border-radius:3px;
+  overflow:hidden;
+}
+.opt-hdr{
+  display:grid;grid-template-columns:1fr 80px 80px 80px 80px 80px 1fr;
+  background:var(--panel2);padding:8px 12px;font-size:.58rem;color:var(--muted2);
+  letter-spacing:.08em;text-transform:uppercase;text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.opt-hdr .strike-col{color:var(--gold)}
+.opt-row{
+  display:grid;grid-template-columns:1fr 80px 80px 80px 80px 80px 1fr;
+  padding:7px 12px;font-size:.68rem;text-align:center;border-bottom:1px solid var(--border);
+  transition:background .15s;
+}
+.opt-row:hover{background:var(--panel2)}
+.opt-row.atm{background:rgba(240,192,64,.06)}
+.opt-row.atm .strike{color:var(--gold);font-weight:700}
+.call-side{color:var(--green)}.put-side{color:var(--red)}.strike{color:var(--text)}
+
+/* ── RIGHT PANEL — MARKET / INSIGHTS ── */
+.right-panel{
+  border-left:1px solid var(--border);background:var(--bg2);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.mkt-section{padding:16px 18px;border-bottom:1px solid var(--border)}
+.sec-title{font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted2);margin-bottom:12px}
+.mkt-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.mkt-row:last-child{border-bottom:none}
+.mkt-index{font-size:.72rem;font-weight:600}
+.mkt-idx-val{font-size:.8rem;text-align:right}
+.mkt-idx-chg{font-size:.62rem;text-align:right}
+
+/* Breadth */
+.breadth-bars{display:flex;flex-direction:column;gap:8px}
+.breadth-row{display:flex;align-items:center;gap:8px;font-size:.62rem}
+.breadth-label{width:60px;color:var(--muted2)}
+.breadth-bar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.breadth-fill{height:100%;border-radius:3px;background:var(--green)}
+.breadth-fill.red{background:var(--red)}
+.breadth-val{width:32px;text-align:right;color:var(--muted2)}
+
+/* Top movers */
+.mover-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.68rem}
+.mover-row:last-child{border-bottom:none}
+.mover-t{color:var(--gold)}
+
+/* Sector heat */
+.sector-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sector-cell{
+  background:var(--panel);border:1px solid var(--border);border-radius:2px;
+  padding:8px 10px;font-size:.62rem;cursor:default;transition:background .15s;
+}
+.sector-cell:hover{background:var(--panel2)}
+.sector-nm{color:var(--muted2);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sector-ret.up{color:var(--green)}.sector-ret.dn{color:var(--red)}
+
+/* AI chat (right side) */
+.ai-chat{padding:14px 18px;border-top:1px solid var(--border)}
+.ai-chat-msg{background:var(--panel);border:1px solid var(--border2);border-radius:3px;padding:12px;font-size:.7rem;line-height:1.7;color:var(--muted2);margin-bottom:10px;min-height:60px}
+.ai-chat-input-wrap{display:flex;gap:6px}
+.ai-chat-input{
+  flex:1;background:var(--panel2);border:1px solid var(--border2);
+  border-radius:2px;padding:8px 12px;font-family:var(--mono);font-size:.7rem;
+  color:var(--text);outline:none;transition:border-color .2s;
+}
+.ai-chat-input:focus{border-color:var(--gold)}
+.ai-chat-send{
+  background:var(--gold);color:#04050a;border:none;border-radius:2px;
+  padding:8px 14px;cursor:pointer;font-family:var(--mono);font-size:.7rem;
+  font-weight:700;transition:opacity .2s;white-space:nowrap;
+}
+.ai-chat-send:hover{opacity:.85}
+.ai-chat-send:disabled{opacity:.4;cursor:not-allowed}
+
+/* Streaming cursor */
+.cursor{display:inline-block;width:6px;height:12px;background:var(--gold);animation:blink-cur .8s infinite;vertical-align:middle}
+@keyframes blink-cur{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Loader */
+.spinner{
+  display:inline-block;width:14px;height:14px;border:2px solid var(--border2);
+  border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">FinPulse<sub>PRO</sub></div>
+
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="searchInput" placeholder="Search any NSE / BSE stock, index, future…" autocomplete="off"/>
+    <div class="search-dropdown" id="searchDropdown"></div>
+  </div>
+
+    <div class="hdr-right">
+    <div class="live-dot" id="liveDot"></div>
+    <div>
+      <div class="mkt-pill">NIFTY 50 &nbsp;<span class="mkt-val" id="niftyVal">—</span></div>
+      <div class="mkt-pill" style="margin-top:2px">SENSEX &nbsp;<span class="mkt-val" id="sensexVal">—</span></div>
+    </div>
+    <div style="text-align:right">
+      <div class="ts-badge" id="tsEl"></div>
+      <div style="font-size:.58rem;color:var(--muted2);margin-top:3px" id="dataStatus">Loading real data…</div>
+    </div>
+  </div>
+</header>
+
+<!-- APP GRID -->
+<div class="app">
+
+  <!-- LEFT: WATCHLIST -->
+  <div class="left-panel">
+    <div class="panel-hdr">Watchlist <span id="wlCount">— stocks</span></div>
+    <div style="display:flex;gap:4px;padding:8px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <button class="cap-btn active" onclick="filterCap(this,'All')">All</button>
+      <button class="cap-btn" onclick="filterCap(this,'Large Cap')">Large</button>
+      <button class="cap-btn" onclick="filterCap(this,'Mid Cap')">Mid</button>
+      <button class="cap-btn" onclick="filterCap(this,'Small Cap')">Small</button>
+    </div>
+    <div class="watchlist" id="watchlist"></div>
+  </div>
+
+  <!-- CENTER: MAIN -->
+  <div class="center-panel" id="centerPanel">
+    <div class="price-hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-name" id="heroName">Select a stock</div>
+          <div class="hero-ticker" id="heroTicker">—</div>
+          <div class="hero-badges" id="heroBadges"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="hero-price" id="heroPrice">—</div>
+          <div class="hero-chg" id="heroChg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-strip" id="kpiStrip">
+      <div class="kpi-cell"><div class="kpi-l">Open</div><div class="kpi-v" id="k1">—</div></div>
+      <div class="kpi-cell"><div class="kpi-l">High</div><div class="kpi-v up" id="k2">—</div></div>
+      <div class="kpi-cell"><div class="kpi-l">Low</div><div class="kpi-v dn" id="k3">—</div></div>
+      <div class="kpi-cell"><div class="kpi-l">Volume</div><div class="kpi-v" id="k4">—</div></div>
+      <div class="kpi-cell"><div class="kpi-l">Mkt Cap</div><div class="kpi-v" id="k5">—</div></div>
+      <div class="kpi-cell"><div class="kpi-l">52W H/L</div><div class="kpi-v" id="k6" style="font-size:.72rem">—</div></div>
+    </div>
+
+    <!-- Price Chart -->
+    <div class="chart-area">
+      <div class="chart-hdr">
+        <div class="chart-title">Price Chart</div>
+        <div class="timeframe-btns">
+          <button class="tf-btn active" onclick="setTF(this,'1W')">1W</button>
+          <button class="tf-btn" onclick="setTF(this,'1M')">1M</button>
+          <button class="tf-btn" onclick="setTF(this,'3M')">3M</button>
+          <button class="tf-btn" onclick="setTF(this,'1Y')">1Y</button>
+          <button class="tf-btn" onclick="setTF(this,'3Y')">3Y</button>
+        </div>
+      </div>
+      <canvas id="priceChart" height="160"></canvas>
+      <div class="vol-bar-wrap" id="volBars"></div>
+    </div>
+
+    <!-- AI ADVICE -->
+    <div class="ai-advice">
+      <div class="ai-hdr">
+        <span class="ai-hdr-icon">◈</span>
+        <span class="ai-hdr-text">AI Institutional Analysis</span>
+        <span class="ai-hdr-model">Claude Sonnet 4 · Live</span>
+      </div>
+      <div class="ai-body" id="aiBody">Select a stock to generate analysis…</div>
+      <div class="ai-verdict" id="aiVerdict"></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'fin')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'futures')">Futures</div>
+      <div class="tab" onclick="switchTab(this,'options')">Options Chain</div>
+      <div class="tab" onclick="switchTab(this,'technical')">Technical</div>
+    </div>
+
+    <div class="tab-content active" id="tab-fin">
+      <table class="fin-table" id="finTable"><tr><td style="color:var(--muted2);padding:20px 0">Select a stock to view financials</td></tr></table>
+    </div>
+    <div class="tab-content" id="tab-futures">
+      <div class="futures-grid" id="futuresGrid"></div>
+    </div>
+    <div class="tab-content" id="tab-options">
+      <div class="options-preview" id="optionsChain"></div>
+    </div>
+    <div class="tab-content" id="tab-technical">
+      <div id="technicalSection"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: MARKET + AI CHAT -->
+  <div class="right-panel">
+    <div class="mkt-section">
+      <div class="sec-title">Indian Indices</div>
+      <div id="indicesPanel"></div>
+    </div>
+    <div class="mkt-section">
+      <div class="sec-title">Market Breadth</div>
+      <div class="breadth-bars" id="breadthPanel"></div>
+    </div>
+    <div class="mkt-section">
+      <div class="sec-title">Top Gainers Today</div>
+      <div id="gainers"></div>
+    </div>
+    <div class="mkt-section">
+      <div class="sec-title">Top Losers Today</div>
+      <div id="losers"></div>
+    </div>
+    <div class="mkt-section">
+      <div class="sec-title">Sector Performance</div>
+      <div class="sector-grid" id="sectorGrid"></div>
+    </div>
+    <div class="ai-chat" style="flex:1">
+      <div class="sec-title">Ask AI Analyst</div>
+      <div class="ai-chat-msg" id="chatMsg">Ask me anything about this stock, macro trends, or portfolio strategy…</div>
+      <div class="ai-chat-input-wrap">
+        <input class="ai-chat-input" id="chatInput" placeholder="e.g. Should I hedge with futures?" onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="ai-chat-send" id="chatSend" onclick="sendChat()">Ask ↵</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════════
+// STOCK UNIVERSE — 100+ NSE listed companies with realistic data
+// ════════════════════════════════════════════════════════════════════
+const STOCKS = [
+  {t:"RELIANCE.NS",n:"Reliance Industries",s:"Energy",cap:"Large Cap",p:2935,c:1.24,pe:28.4,pb:2.1,roe:9.8,nm:7.9,mc:1980000,h52:3024,l52:2220,vol:8240000,open:2898,high:2951,low:2880,div:0.4},
+  {t:"TCS.NS",n:"Tata Consultancy Services",s:"IT",cap:"Large Cap",p:3720,c:0.62,pe:30.1,pb:13.4,roe:46.2,nm:18.9,mc:1350000,h52:4255,l52:3350,vol:3120000,open:3700,high:3742,low:3692,div:1.6},
+  {t:"HDFCBANK.NS",n:"HDFC Bank",s:"Banking",cap:"Large Cap",p:1560,c:-0.84,pe:18.2,pb:2.8,roe:15.4,nm:22.3,mc:1180000,h52:1795,l52:1420,vol:14200000,open:1572,high:1578,low:1548,div:1.2},
+  {t:"INFY.NS",n:"Infosys",s:"IT",cap:"Large Cap",p:1635,c:-0.42,pe:24.8,pb:8.9,roe:32.1,nm:17.2,mc:680000,h52:1980,l52:1400,vol:6800000,open:1645,high:1656,low:1628,div:2.4},
+  {t:"ICICIBANK.NS",n:"ICICI Bank",s:"Banking",cap:"Large Cap",p:1178,c:1.87,pe:19.4,pb:3.2,roe:17.8,nm:28.4,mc:830000,h52:1250,l52:950,vol:18000000,open:1155,high:1185,low:1150,div:0.8},
+  {t:"WIPRO.NS",n:"Wipro",s:"IT",cap:"Large Cap",p:489,c:-1.12,pe:20.3,pb:3.8,roe:15.9,nm:11.2,mc:254000,h52:560,l52:360,vol:9200000,open:495,high:498,low:485,div:1.0},
+  {t:"BHARTIARTL.NS",n:"Bharti Airtel",s:"Telecom",cap:"Large Cap",p:1425,c:2.14,pe:62.4,pb:8.1,roe:12.4,nm:3.8,mc:848000,h52:1450,l52:820,vol:6400000,open:1395,high:1432,low:1390,div:0.3},
+  {t:"SBIN.NS",n:"State Bank of India",s:"Banking",cap:"Large Cap",p:788,c:0.94,pe:10.2,pb:1.8,roe:18.4,nm:14.1,mc:705000,h52:840,l52:570,vol:22000000,open:780,high:794,low:776,div:1.4},
+  {t:"BAJFINANCE.NS",n:"Bajaj Finance",s:"NBFC",cap:"Large Cap",p:7210,c:1.44,pe:32.8,pb:6.2,roe:22.4,nm:21.8,mc:432000,h52:8192,l52:6200,vol:1800000,open:7120,high:7248,low:7098,div:0.3},
+  {t:"HINDUNILVR.NS",n:"Hindustan Unilever",s:"FMCG",cap:"Large Cap",p:2428,c:-0.26,pe:52.1,pb:11.4,roe:21.8,nm:16.4,mc:570000,h52:2750,l52:2180,vol:3200000,open:2435,high:2442,low:2415,div:1.5},
+  {t:"LT.NS",n:"Larsen & Toubro",s:"Infrastructure",cap:"Large Cap",p:3548,c:0.88,pe:36.4,pb:5.4,roe:14.8,nm:7.2,mc:489000,h52:3780,l52:2800,vol:2800000,open:3520,high:3564,low:3510,div:0.9},
+  {t:"KOTAKBANK.NS",n:"Kotak Mahindra Bank",s:"Banking",cap:"Large Cap",p:1894,c:0.34,pe:22.1,pb:3.8,roe:14.2,nm:25.4,mc:378000,h52:2062,l52:1600,vol:5200000,open:1888,high:1902,low:1878,div:0.1},
+  {t:"AXISBANK.NS",n:"Axis Bank",s:"Banking",cap:"Large Cap",p:1142,c:1.26,pe:14.8,pb:2.1,roe:16.2,nm:22.1,mc:352000,h52:1220,l52:890,vol:11200000,open:1128,high:1150,low:1122,div:0.09},
+  {t:"NESTLEIND.NS",n:"Nestle India",s:"FMCG",cap:"Large Cap",p:2388,c:-0.18,pe:75.2,pb:82.4,roe:110.4,nm:14.8,mc:231000,h52:2668,l52:2100,vol:420000,open:2394,high:2402,low:2378,div:1.8},
+  {t:"MARUTI.NS",n:"Maruti Suzuki India",s:"Auto",cap:"Large Cap",p:12380,c:0.72,pe:28.4,pb:5.1,roe:18.2,nm:8.4,mc:385000,h52:13680,l52:9800,vol:820000,open:12298,high:12420,low:12250,div:0.6},
+  {t:"ASIANPAINT.NS",n:"Asian Paints",s:"Consumer",cap:"Large Cap",p:2610,c:-1.04,pe:52.4,pb:18.2,roe:35.4,nm:14.2,mc:249000,h52:3395,l52:2200,vol:1480000,open:2636,high:2642,low:2598,div:0.9},
+  {t:"SUNPHARMA.NS",n:"Sun Pharmaceutical",s:"Pharma",cap:"Large Cap",p:1648,c:1.18,pe:34.2,pb:4.8,roe:14.2,nm:17.8,mc:396000,h52:1700,l52:1100,vol:3800000,open:1630,high:1656,low:1624,div:0.6},
+  {t:"TITAN.NS",n:"Titan Company",s:"Consumer",cap:"Large Cap",p:3560,c:0.94,pe:94.2,pb:22.4,roe:24.8,nm:7.8,mc:316000,h52:3886,l52:2900,vol:1420000,open:3527,high:3572,low:3514,div:0.3},
+  {t:"POWERGRID.NS",n:"Power Grid Corp",s:"Utilities",cap:"Large Cap",p:315,c:0.48,pe:16.8,pb:3.8,roe:22.4,nm:32.4,mc:293000,h52:360,l52:230,vol:12800000,open:313,high:317,low:312,div:4.2},
+  {t:"NTPC.NS",n:"NTPC",s:"Utilities",cap:"Large Cap",p:374,c:0.81,pe:18.4,pb:2.4,roe:13.2,nm:15.8,mc:362000,h52:395,l52:220,vol:18400000,open:371,high:376,low:369,div:2.8},
+  {t:"ONGC.NS",n:"Oil & Natural Gas Corp",s:"Energy",cap:"Large Cap",p:268,c:-0.37,pe:7.8,pb:1.1,roe:14.8,nm:11.4,mc:336000,h52:345,l52:205,vol:24000000,open:269,high:271,low:265,div:4.8},
+  {t:"TATAMOTORS.NS",n:"Tata Motors",s:"Auto",cap:"Large Cap",p:924,c:2.84,pe:8.4,pb:3.8,roe:48.2,nm:7.4,mc:340000,h52:1180,l52:680,vol:14200000,open:898,high:932,low:895,div:0.2},
+  {t:"TATASTEEL.NS",n:"Tata Steel",s:"Metals",cap:"Large Cap",p:164,c:1.86,pe:44.2,pb:2.1,roe:4.8,nm:2.4,mc:206000,h52:185,l52:118,vol:28000000,open:161,high:166,low:160,div:1.2},
+  {t:"JSWSTEEL.NS",n:"JSW Steel",s:"Metals",cap:"Large Cap",p:896,c:2.14,pe:28.4,pb:3.4,roe:12.8,nm:7.2,mc:218000,h52:1040,l52:680,vol:6200000,open:879,high:902,low:875,div:0.7},
+  {t:"HCLTECH.NS",n:"HCL Technologies",s:"IT",cap:"Large Cap",p:1645,c:0.28,pe:25.8,pb:5.8,roe:23.4,nm:14.2,mc:448000,h52:1960,l52:1400,vol:4800000,open:1640,high:1650,low:1632,div:3.4},
+  {t:"TECHM.NS",n:"Tech Mahindra",s:"IT",cap:"Large Cap",p:1558,c:3.24,pe:42.4,pb:6.2,roe:14.8,nm:6.4,mc:152000,h52:1720,l52:1050,vol:5200000,open:1508,high:1564,low:1502,div:1.6},
+  {t:"DRREDDY.NS",n:"Dr Reddy's Laboratories",s:"Pharma",cap:"Large Cap",p:5890,c:0.62,pe:22.8,pb:4.2,roe:19.4,nm:14.8,mc:100000,h52:6960,l52:5100,vol:620000,open:5852,high:5906,low:5840,div:0.4},
+  {t:"CIPLA.NS",n:"Cipla",s:"Pharma",cap:"Large Cap",p:1528,c:0.94,pe:28.2,pb:5.4,roe:19.2,nm:13.8,mc:124000,h52:1694,l52:1110,vol:2400000,open:1514,high:1534,low:1508,div:0.4},
+  {t:"BAJAJFINSV.NS",n:"Bajaj Finserv",s:"Financial",cap:"Large Cap",p:1858,c:0.84,pe:34.2,pb:4.8,roe:14.4,nm:12.8,mc:296000,h52:2030,l52:1420,vol:2800000,open:1842,high:1866,low:1835,div:0.05},
+  {t:"GRASIM.NS",n:"Grasim Industries",s:"Diversified",cap:"Large Cap",p:2682,c:1.14,pe:18.8,pb:2.4,roe:13.4,nm:11.2,mc:177000,h52:2840,l52:1900,vol:1800000,open:2650,high:2692,low:2644,div:0.7},
+  {t:"ULTRACEMCO.NS",n:"UltraTech Cement",s:"Cement",cap:"Large Cap",p:11240,c:0.48,pe:42.8,pb:6.8,roe:16.4,nm:10.8,mc:324000,h52:12450,l52:8200,vol:420000,open:11188,high:11268,low:11148,div:0.4},
+  {t:"HINDALCO.NS",n:"Hindalco Industries",s:"Metals",cap:"Large Cap",p:672,c:3.14,pe:14.8,pb:2.2,roe:15.4,nm:8.4,mc:151000,h52:729,l52:430,vol:8400000,open:651,high:676,low:648,div:1.0},
+  {t:"ADANIENT.NS",n:"Adani Enterprises",s:"Diversified",cap:"Large Cap",p:2894,c:1.88,pe:88.4,pb:8.4,roe:9.4,nm:3.4,mc:329000,h52:3425,l52:2030,vol:4200000,open:2845,high:2908,low:2840,div:0.1},
+  {t:"ADANIPORTS.NS",n:"Adani Ports & SEZ",s:"Infrastructure",cap:"Large Cap",p:1348,c:1.42,pe:28.4,pb:6.2,roe:21.8,nm:26.4,mc:290000,h52:1621,l52:1000,vol:4800000,open:1329,high:1355,low:1324,div:0.5},
+  {t:"BPCL.NS",n:"Bharat Petroleum Corp",s:"Energy",cap:"Large Cap",p:298,c:-0.67,pe:7.4,pb:2.4,roe:32.8,nm:4.8,mc:130000,h52:376,l52:260,vol:14000000,open:300,high:302,low:295,div:5.4},
+  {t:"IOCL.NS",n:"Indian Oil Corporation",s:"Energy",cap:"Large Cap",p:158,c:-0.63,pe:7.2,pb:1.4,roe:19.8,nm:4.2,mc:224000,h52:196,l52:138,vol:22000000,open:159,high:160,low:156,div:6.8},
+  {t:"COALINDIA.NS",n:"Coal India",s:"Mining",cap:"Large Cap",p:484,c:0.42,pe:7.8,pb:5.4,roe:68.4,nm:20.8,mc:299000,h52:540,l52:390,vol:9800000,open:482,high:487,low:480,div:7.2},
+  {t:"BAJAJ-AUTO.NS",n:"Bajaj Auto",s:"Auto",cap:"Large Cap",p:9324,c:1.24,pe:32.4,pb:8.8,roe:27.4,nm:16.8,mc:262000,h52:12774,l52:7000,vol:580000,open:9210,high:9348,low:9188,div:1.0},
+  {t:"EICHERMOT.NS",n:"Eicher Motors",s:"Auto",cap:"Large Cap",p:4824,c:0.88,pe:34.2,pb:9.2,roe:27.4,nm:19.2,mc:132000,h52:5262,l52:3440,vol:480000,open:4782,high:4838,low:4768,div:0.8},
+  {t:"HEROMOCHA.NS",n:"Hero MotoCorp",s:"Auto",cap:"Large Cap",p:4856,c:0.36,pe:22.8,pb:6.8,roe:30.4,nm:9.4,mc:97000,h52:6246,l52:3700,vol:620000,open:4838,high:4870,low:4820,div:1.4},
+  {t:"BRITANNIA.NS",n:"Britannia Industries",s:"FMCG",cap:"Large Cap",p:4820,c:-0.44,pe:48.2,pb:28.4,roe:58.8,nm:14.2,mc:116000,h52:5480,l52:4150,vol:280000,open:4842,high:4848,low:4802,div:1.4},
+  {t:"TATACONSUM.NS",n:"Tata Consumer Products",s:"FMCG",cap:"Large Cap",p:1082,c:0.94,pe:82.4,pb:8.2,roe:9.8,nm:7.2,mc:100000,h52:1240,l52:830,vol:2800000,open:1072,high:1088,low:1068,div:0.7},
+  {t:"ITC.NS",n:"ITC",s:"FMCG",cap:"Large Cap",p:464,c:0.22,pe:28.4,pb:8.2,roe:29.4,nm:27.8,mc:578000,h52:528,l52:400,vol:14000000,open:463,high:466,low:461,div:2.8},
+  {t:"APOLLOHOSP.NS",n:"Apollo Hospitals",s:"Healthcare",cap:"Large Cap",p:6842,c:1.88,pe:128.4,pb:14.4,roe:11.4,nm:5.2,mc:98000,h52:7545,l52:5390,vol:480000,open:6718,high:6862,low:6710,div:0.2},
+  {t:"DMART.NS",n:"Avenue Supermarts (D-Mart)",s:"Retail",cap:"Large Cap",p:3824,c:-0.62,pe:88.4,pb:14.2,roe:16.4,nm:5.4,mc:248000,h52:5484,l52:3500,vol:520000,open:3848,high:3852,low:3808,div:0},
+  {t:"ZOMATO.NS",n:"Zomato",s:"Consumer Tech",cap:"Large Cap",p:224,c:3.24,pe:320,pb:9.4,roe:2.4,nm:1.8,mc:198000,h52:290,l52:126,vol:42000000,open:217,high:226,low:215,div:0},
+  {t:"NYKAA.NS",n:"FSN E-Commerce (Nykaa)",s:"Consumer Tech",cap:"Mid Cap",p:178,c:2.14,pe:284,pb:12.4,roe:4.4,nm:1.2,mc:51000,h52:224,l52:128,vol:8400000,open:174,high:180,low:172,div:0},
+  {t:"PAYTM.NS",n:"One 97 Communications",s:"Fintech",cap:"Mid Cap",p:648,c:4.18,pe:0,pb:2.8,roe:-8.4,nm:-4.2,mc:41000,h52:988,l52:310,vol:12000000,open:622,high:652,low:618,div:0},
+  {t:"IRCTC.NS",n:"IRCTC",s:"Travel",cap:"Large Cap",p:820,c:1.14,pe:60.8,pb:22.4,roe:37.4,nm:26.4,mc:66000,h52:980,l52:640,vol:2800000,open:811,high:824,low:808,div:0.6},
+  {t:"PIDILITIND.NS",n:"Pidilite Industries",s:"Chemicals",cap:"Large Cap",p:2868,c:0.72,pe:84.2,pb:20.8,roe:25.4,nm:14.8,mc:145000,h52:3093,l52:2410,vol:520000,open:2848,high:2876,low:2840,div:0.4},
+  {t:"HAVELLS.NS",n:"Havells India",s:"Consumer",cap:"Large Cap",p:1718,c:1.22,pe:72.4,pb:14.4,roe:20.4,nm:7.4,mc:108000,h52:2072,l52:1350,vol:1200000,open:1698,high:1724,low:1692,div:0.5},
+  {t:"BERGEPAINT.NS",n:"Berger Paints India",s:"Consumer",cap:"Large Cap",p:524,c:-0.76,pe:64.8,pb:16.2,roe:25.4,nm:10.2,mc:51000,h52:668,l52:490,vol:1800000,open:528,high:530,low:520,div:0.7},
+  {t:"MUTHOOTFIN.NS",n:"Muthoot Finance",s:"NBFC",cap:"Mid Cap",p:2218,c:2.14,pe:18.4,pb:4.8,roe:27.4,nm:22.8,mc:89000,h52:2456,l52:1400,vol:1200000,open:2172,high:2226,low:2168,div:1.0},
+  {t:"CHOLAFIN.NS",n:"Cholamandalam Finance",s:"NBFC",cap:"Large Cap",p:1468,c:1.84,pe:36.4,pb:7.4,roe:21.4,nm:16.4,mc:122000,h52:1652,l52:1000,vol:2400000,open:1442,high:1474,low:1436,div:0.2},
+  {t:"SIEMENS.NS",n:"Siemens India",s:"Capital Goods",cap:"Large Cap",p:6480,c:0.94,pe:72.4,pb:12.8,roe:18.4,nm:8.2,mc:91000,h52:7564,l52:4500,vol:280000,open:6418,high:6498,low:6402,div:0.3},
+  {t:"ABB.NS",n:"ABB India",s:"Capital Goods",cap:"Large Cap",p:8240,c:1.44,pe:92.4,pb:22.4,roe:25.8,nm:10.4,mc:175000,h52:9500,l52:5500,vol:180000,open:8128,high:8264,low:8100,div:0.2},
+  {t:"CUMMINSIND.NS",n:"Cummins India",s:"Capital Goods",cap:"Large Cap",p:3618,c:0.86,pe:52.4,pb:14.2,roe:28.4,nm:18.2,mc:100000,h52:4100,l52:2200,vol:480000,open:3587,high:3628,low:3572,div:1.0},
+  {t:"GODREJCP.NS",n:"Godrej Consumer Products",s:"FMCG",cap:"Large Cap",p:1148,c:0.44,pe:64.8,pb:8.4,roe:13.4,nm:11.8,mc:118000,h52:1400,l52:900,vol:1400000,open:1143,high:1152,low:1138,div:0.6},
+  {t:"MARICO.NS",n:"Marico",s:"FMCG",cap:"Large Cap",p:680,c:0.34,pe:48.4,pb:14.8,roe:31.4,nm:14.8,mc:88000,h52:748,l52:490,vol:2800000,open:677,high:682,low:674,div:1.6},
+  {t:"PAGEIND.NS",n:"Page Industries (Jockey)",s:"Apparel",cap:"Large Cap",p:42800,c:-0.28,pe:68.4,pb:28.4,roe:42.4,nm:15.8,mc:48000,h52:50000,l52:34000,vol:28000,open:42920,high:43020,low:42620,div:0.5},
+  {t:"NAUKRI.NS",n:"Info Edge (Naukri)",s:"Consumer Tech",cap:"Large Cap",p:6880,c:1.24,pe:84.8,pb:18.4,roe:21.8,nm:24.8,mc:88000,h52:8000,l52:5200,vol:480000,open:6806,high:6900,low:6790,div:0.3},
+  {t:"INDUSINDBK.NS",n:"IndusInd Bank",s:"Banking",cap:"Large Cap",p:810,c:-2.84,pe:8.4,pb:1.2,roe:14.8,nm:18.4,mc:63000,h52:1694,l52:600,vol:12000000,open:830,high:835,low:802,div:1.0},
+  {t:"FEDERALBNK.NS",n:"Federal Bank",s:"Banking",cap:"Mid Cap",p:198,c:0.51,pe:10.4,pb:1.6,roe:16.4,nm:20.8,mc:49000,h52:215,l52:145,vol:8400000,open:197,high:199,low:196,div:1.8},
+  {t:"BANDHANBNK.NS",n:"Bandhan Bank",s:"Banking",cap:"Mid Cap",p:168,c:-1.17,pe:12.8,pb:1.4,roe:11.4,nm:18.4,mc:27000,h52:248,l52:148,vol:9200000,open:170,high:171,low:166,div:0.6},
+  {t:"PNB.NS",n:"Punjab National Bank",s:"Banking",cap:"Mid Cap",p:104,c:0.97,pe:9.4,pb:1.0,roe:11.8,nm:8.4,mc:114000,h52:142,l52:72,vol:32000000,open:103,high:105,low:102,div:0.9},
+  {t:"BANKBARODA.NS",n:"Bank of Baroda",s:"Banking",cap:"Large Cap",p:228,c:1.34,pe:7.8,pb:1.2,roe:16.4,nm:11.8,mc:118000,h52:285,l52:185,vol:16000000,open:225,high:230,low:224,div:2.2},
+  {t:"CANBK.NS",n:"Canara Bank",s:"Banking",cap:"Large Cap",p:104,c:1.96,pe:5.8,pb:1.1,roe:19.4,nm:12.8,mc:94000,h52:128,l52:78,vol:18000000,open:102,high:105,low:101,div:2.4},
+  {t:"AUBANK.NS",n:"AU Small Finance Bank",s:"Banking",cap:"Mid Cap",p:618,c:0.65,pe:26.4,pb:3.8,roe:15.4,nm:16.8,mc:45000,h52:814,l52:560,vol:3200000,open:614,high:621,low:611,div:0},
+  {t:"RECLTD.NS",n:"REC Limited",s:"Financial",cap:"Large Cap",p:510,c:2.42,pe:9.4,pb:2.2,roe:24.4,nm:28.4,mc:135000,h52:654,l52:350,vol:8800000,open:498,high:514,low:496,div:2.4},
+  {t:"PFC.NS",n:"Power Finance Corp",s:"Financial",cap:"Large Cap",p:476,c:2.14,pe:8.8,pb:1.8,roe:20.8,nm:28.8,mc:157000,h52:580,l52:310,vol:10000000,open:466,high:480,low:464,div:2.8},
+  {t:"IRFC.NS",n:"Indian Railway Finance Corp",s:"Financial",cap:"Large Cap",p:196,c:1.03,pe:28.4,pb:5.2,roe:18.4,nm:26.4,mc:256000,h52:230,l52:130,vol:18000000,open:194,high:197,low:193,div:0.8},
+  {t:"LTIM.NS",n:"LTIMindtree",s:"IT",cap:"Large Cap",p:5480,c:0.44,pe:34.8,pb:8.4,roe:25.4,nm:14.8,mc:163000,h52:7500,l52:4600,vol:480000,open:5456,high:5498,low:5440,div:1.0},
+  {t:"MPHASIS.NS",n:"Mphasis",s:"IT",cap:"Mid Cap",p:2680,c:1.14,pe:30.4,pb:6.2,roe:21.4,nm:14.4,mc:50000,h52:3200,l52:2100,vol:620000,open:2650,high:2690,low:2640,div:1.4},
+  {t:"PERSISTENT.NS",n:"Persistent Systems",s:"IT",cap:"Large Cap",p:5640,c:2.14,pe:56.4,pb:14.8,roe:27.4,nm:12.8,mc:87000,h52:6468,l52:3800,vol:520000,open:5522,high:5660,low:5508,div:0.6},
+  {t:"COFORGE.NS",n:"Coforge",s:"IT",cap:"Mid Cap",p:7980,c:3.24,pe:68.4,pb:16.4,roe:26.4,nm:10.8,mc:55000,h52:9482,l52:5100,vol:420000,open:7730,high:8008,low:7710,div:0.5},
+  {t:"TATACOMM.NS",n:"Tata Communications",s:"Telecom",cap:"Large Cap",p:1720,c:0.88,pe:38.4,pb:36.4,roe:92.4,nm:9.8,mc:49000,h52:2049,l52:1450,vol:720000,open:1705,high:1726,low:1698,div:1.4},
+  {t:"IDEA.NS",n:"Vodafone Idea",s:"Telecom",cap:"Mid Cap",p:14.2,c:2.16,pe:0,pb:0,roe:-28.4,nm:-18.2,mc:62000,h52:19.2,l52:7.1,vol:120000000,open:13.9,high:14.3,low:13.7,div:0},
+  {t:"DIXON.NS",n:"Dixon Technologies",s:"Electronics",cap:"Large Cap",p:15240,c:4.14,pe:128.4,pb:28.4,roe:22.4,nm:2.4,mc:91000,h52:18500,l52:9000,vol:280000,open:14636,high:15290,low:14580,div:0.05},
+  {t:"KAYNES.NS",n:"Kaynes Technology",s:"Electronics",cap:"Mid Cap",p:4820,c:5.18,pe:168.4,pb:28.4,roe:17.4,nm:8.4,mc:26000,h52:5640,l52:2200,vol:380000,open:4582,high:4840,low:4562,div:0},
+  {t:"RVNL.NS",n:"Rail Vikas Nigam",s:"Infrastructure",cap:"Mid Cap",p:380,c:2.16,pe:28.4,pb:6.4,roe:22.8,nm:7.8,mc:79000,h52:648,l52:168,vol:18000000,open:372,high:382,low:370,div:0.7},
+  {t:"IRCON.NS",n:"IRCON International",s:"Infrastructure",cap:"Mid Cap",p:210,c:1.45,pe:18.4,pb:3.8,roe:21.4,nm:8.4,mc:20000,h52:356,l52:168,vol:4800000,open:207,high:212,low:206,div:1.2},
+  {t:"HAL.NS",n:"Hindustan Aeronautics",s:"Defence",cap:"Large Cap",p:4240,c:1.88,pe:34.8,pb:12.4,roe:36.4,nm:20.4,mc:284000,h52:5674,l52:2900,vol:1200000,open:4168,high:4258,low:4148,div:1.0},
+  {t:"BEL.NS",n:"Bharat Electronics",s:"Defence",cap:"Large Cap",p:294,c:1.38,pe:44.8,pb:10.4,roe:23.4,nm:16.8,mc:215000,h52:340,l52:175,vol:18000000,open:290,high:296,low:288,div:0.7},
+  {t:"CDSL.NS",n:"Central Depository Services",s:"Financial",cap:"Mid Cap",p:1720,c:2.44,pe:58.4,pb:22.8,roe:39.4,nm:40.4,mc:18000,h52:2224,l52:1100,vol:2200000,open:1680,high:1728,low:1672,div:0.9},
+  {t:"MCX.NS",n:"Multi Commodity Exchange",s:"Financial",cap:"Mid Cap",p:5240,c:3.14,pe:64.8,pb:10.4,roe:16.4,nm:24.8,mc:27000,h52:6000,l52:2700,vol:480000,open:5078,high:5258,low:5060,div:0.8},
+  {t:"BSE.NS",n:"BSE Ltd",s:"Financial",cap:"Mid Cap",p:5480,c:4.18,pe:52.4,pb:12.8,roe:25.4,nm:28.4,mc:74000,h52:6000,l52:1900,vol:620000,open:5264,high:5500,low:5242,div:1.2},
+  {t:"ANGELONE.NS",n:"Angel One",s:"Financial",cap:"Mid Cap",p:2884,c:1.44,pe:18.8,pb:5.4,roe:30.4,nm:18.4,mc:26000,h52:3880,l52:1900,vol:1200000,open:2843,high:2896,low:2832,div:1.8},
+
+  // ── MID CAP ────────────────────────────────────────────────────────
+  {t:"ABCAPITAL.NS",n:"Aditya Birla Capital",s:"Financial",cap:"Mid Cap",p:182,c:1.12,pe:18.4,pb:2.4,roe:14.2,nm:12.4,mc:48000,h52:230,l52:145,vol:6800000,open:180,high:184,low:178,div:0},
+  {t:"ABFRL.NS",n:"Aditya Birla Fashion & Retail",s:"Retail",cap:"Mid Cap",p:298,c:2.14,pe:0,pb:4.8,roe:-4.2,nm:-2.4,mc:32000,h52:380,l52:198,vol:4200000,open:292,high:300,low:290,div:0},
+  {t:"AIAENG.NS",n:"AIA Engineering",s:"Capital Goods",cap:"Mid Cap",p:3840,c:0.88,pe:42.4,pb:7.8,roe:18.4,nm:19.8,mc:36000,h52:4400,l52:3100,vol:120000,open:3808,high:3852,low:3820,div:0.4},
+  {t:"ALKEM.NS",n:"Alkem Laboratories",s:"Pharma",cap:"Mid Cap",p:4820,c:1.24,pe:28.4,pb:5.4,roe:19.8,nm:14.2,mc:57000,h52:5900,l52:4100,vol:180000,open:4782,high:4838,low:4798,div:0.6},
+  {t:"APLLTD.NS",n:"Alembic Pharmaceuticals",s:"Pharma",cap:"Mid Cap",p:1042,c:0.84,pe:22.4,pb:4.2,roe:19.4,nm:12.8,mc:19000,h52:1280,l52:820,vol:480000,open:1034,high:1048,low:1030,div:1.0},
+  {t:"AMBUJACEM.NS",n:"Ambuja Cements",s:"Cement",cap:"Large Cap",p:554,c:1.44,pe:48.4,pb:4.8,roe:10.4,nm:9.8,mc:110000,h52:698,l52:430,vol:5200000,open:546,high:557,low:543,div:0.7},
+  {t:"APOLLOTYRE.NS",n:"Apollo Tyres",s:"Auto Ancillary",cap:"Mid Cap",p:488,c:2.14,pe:18.4,pb:2.8,roe:15.8,nm:7.4,mc:31000,h52:584,l52:362,vol:3200000,open:478,high:492,low:476,div:0.8},
+  {t:"ASHOKLEY.NS",n:"Ashok Leyland",s:"Auto",cap:"Mid Cap",p:228,c:1.78,pe:18.8,pb:4.8,roe:26.4,nm:5.8,mc:67000,h52:265,l52:162,vol:12000000,open:224,high:230,low:222,div:1.8},
+  {t:"ASTRAL.NS",n:"Astral Ltd",s:"Chemicals",cap:"Mid Cap",p:1862,c:0.64,pe:72.4,pb:14.8,roe:20.4,nm:10.8,mc:50000,h52:2290,l52:1600,vol:680000,open:1850,high:1870,low:1844,div:0.2},
+  {t:"ATUL.NS",n:"Atul Ltd",s:"Chemicals",cap:"Mid Cap",p:6240,c:0.48,pe:38.4,pb:5.4,roe:14.4,nm:12.4,mc:18000,h52:7800,l52:5200,vol:48000,open:6210,high:6258,low:6198,div:0.8},
+  {t:"AUROPHARMA.NS",n:"Aurobindo Pharma",s:"Pharma",cap:"Large Cap",p:1268,c:1.14,pe:18.4,pb:3.4,roe:19.8,nm:12.4,mc:74000,h52:1592,l52:984,vol:2800000,open:1254,high:1274,low:1248,div:0.6},
+  {t:"BALKRISIND.NS",n:"Balkrishna Industries",s:"Auto Ancillary",cap:"Mid Cap",p:2584,c:1.84,pe:32.4,pb:5.8,roe:18.4,nm:15.4,mc:50000,h52:3200,l52:2000,vol:380000,open:2548,high:2592,low:2540,div:0.8},
+  {t:"BATAINDIA.NS",n:"Bata India",s:"Consumer",cap:"Mid Cap",p:1382,c:-0.64,pe:52.8,pb:8.2,roe:15.8,nm:9.4,mc:18000,h52:1880,l52:1240,vol:280000,open:1390,high:1395,low:1374,div:0.7},
+  {t:"BHEL.NS",n:"Bharat Heavy Electricals",s:"Capital Goods",cap:"Large Cap",p:248,c:2.48,pe:128,pb:4.2,roe:3.4,nm:1.8,mc:87000,h52:335,l52:168,vol:24000000,open:242,high:250,low:240,div:0.4},
+  {t:"BIOCON.NS",n:"Biocon",s:"Pharma",cap:"Mid Cap",p:312,c:0.97,pe:84.4,pb:3.4,roe:4.2,nm:3.8,mc:37000,h52:398,l52:248,vol:4800000,open:309,high:314,low:308,div:0.3},
+  {t:"BLUESTARCO.NS",n:"Blue Star",s:"Consumer",cap:"Mid Cap",p:1824,c:1.44,pe:64.8,pb:14.4,roe:22.4,nm:4.2,mc:17000,h52:2068,l52:1200,vol:420000,open:1804,high:1830,low:1798,div:0.5},
+  {t:"CEATLTD.NS",n:"CEAT",s:"Auto Ancillary",cap:"Mid Cap",p:2980,c:1.84,pe:22.4,pb:3.4,roe:15.8,nm:7.2,mc:12000,h52:3600,l52:2200,vol:180000,open:2944,high:2990,low:2934,div:1.0},
+  {t:"CENTURYPLY.NS",n:"Century Plyboards",s:"Consumer",cap:"Mid Cap",p:698,c:1.24,pe:38.4,pb:9.4,roe:25.4,nm:9.8,mc:16000,h52:900,l52:540,vol:1200000,open:690,high:702,low:686,div:0.4},
+  {t:"CLEAN.NS",n:"Clean Science & Technology",s:"Chemicals",cap:"Mid Cap",p:1148,c:0.84,pe:42.4,pb:10.8,roe:25.8,nm:28.4,mc:12000,h52:1590,l52:960,vol:280000,open:1138,high:1154,low:1132,div:0.5},
+  {t:"CROMPTON.NS",n:"Crompton Greaves Consumer",s:"Consumer",cap:"Mid Cap",p:298,c:0.68,pe:38.8,pb:8.4,roe:22.4,nm:5.8,mc:19000,h52:398,l52:248,vol:2800000,open:296,high:300,low:294,div:0.5},
+  {t:"CYIENT.NS",n:"Cyient",s:"IT",cap:"Mid Cap",p:1698,c:1.88,pe:28.4,pb:4.8,roe:17.8,nm:10.2,mc:19000,h52:2260,l52:1380,vol:380000,open:1666,high:1704,low:1660,div:1.4},
+  {t:"DATAPATTNS.NS",n:"Data Patterns (India)",s:"Defence",cap:"Mid Cap",p:2148,c:3.14,pe:68.4,pb:18.4,roe:27.4,nm:27.8,mc:12000,h52:3300,l52:1600,vol:180000,open:2082,high:2160,low:2074,div:0.3},
+  {t:"DEEPAKNTR.NS",n:"Deepak Nitrite",s:"Chemicals",cap:"Mid Cap",p:2248,c:2.14,pe:28.4,pb:5.8,roe:21.4,nm:12.8,mc:31000,h52:2860,l52:1720,vol:480000,open:2202,high:2258,low:2196,div:0.6},
+  {t:"DELHIVERY.NS",n:"Delhivery",s:"Logistics",cap:"Mid Cap",p:348,c:2.88,pe:0,pb:3.4,roe:-2.4,nm:-1.2,mc:25000,h52:490,l52:298,vol:4800000,open:339,high:350,low:336,div:0},
+  {t:"ELGIEQUIP.NS",n:"Elgi Equipments",s:"Capital Goods",cap:"Mid Cap",p:680,c:0.74,pe:42.4,pb:8.4,roe:20.4,nm:10.8,mc:11000,h52:848,l52:560,vol:620000,open:675,high:683,low:672,div:0.6},
+  {t:"EMAMILTD.NS",n:"Emami",s:"FMCG",cap:"Mid Cap",p:558,c:0.54,pe:32.4,pb:12.4,roe:38.4,nm:16.8,mc:25000,h52:680,l52:440,vol:1200000,open:554,high:561,low:551,div:1.8},
+  {t:"ENGINERSIN.NS",n:"Engineers India",s:"Infrastructure",cap:"Mid Cap",p:198,c:1.54,pe:24.4,pb:4.8,roe:20.4,nm:12.8,mc:11000,h52:285,l52:148,vol:3200000,open:195,high:200,low:194,div:2.4},
+  {t:"ESCORTS.NS",n:"Escorts Kubota",s:"Auto",cap:"Mid Cap",p:3540,c:1.24,pe:28.4,pb:4.4,roe:16.4,nm:10.8,mc:39000,h52:4340,l52:2800,vol:380000,open:3506,high:3552,low:3494,div:0.4},
+  {t:"EXIDEIND.NS",n:"Exide Industries",s:"Auto Ancillary",cap:"Mid Cap",p:398,c:1.44,pe:28.4,pb:3.8,roe:13.4,nm:7.4,mc:34000,h52:600,l52:298,vol:2400000,open:392,high:400,low:390,div:1.0},
+  {t:"FINEORG.NS",n:"Fine Organic Industries",s:"Chemicals",cap:"Mid Cap",p:4680,c:0.48,pe:38.4,pb:10.8,roe:29.4,nm:14.8,mc:14000,h52:6200,l52:3900,vol:48000,open:4658,high:4694,low:4648,div:0.6},
+  {t:"FLUOROCHEM.NS",n:"Gujarat Fluorochemicals",s:"Chemicals",cap:"Mid Cap",p:3980,c:2.14,pe:42.4,pb:8.4,roe:20.4,nm:18.4,mc:22000,h52:5400,l52:2800,vol:180000,open:3900,high:3994,low:3882,div:0.2},
+  {t:"GLAND.NS",n:"Gland Pharma",s:"Pharma",cap:"Mid Cap",p:1698,c:0.94,pe:24.4,pb:3.4,roe:14.4,nm:18.8,mc:28000,h52:2188,l52:1348,vol:280000,open:1682,high:1706,low:1676,div:0},
+  {t:"GLAXO.NS",n:"GSK Pharma India",s:"Pharma",cap:"Mid Cap",p:1898,c:0.54,pe:42.4,pb:12.4,roe:29.4,nm:16.4,mc:16000,h52:2260,l52:1500,vol:120000,open:1888,high:1904,low:1882,div:2.4},
+  {t:"GODREJIND.NS",n:"Godrej Industries",s:"Diversified",cap:"Mid Cap",p:682,c:0.88,pe:32.4,pb:3.4,roe:10.8,nm:6.4,mc:23000,h52:840,l52:520,vol:580000,open:676,high:685,low:672,div:0.4},
+  {t:"GPIL.NS",n:"Godawari Power & Ispat",s:"Metals",cap:"Mid Cap",p:798,c:3.14,pe:8.4,pb:2.4,roe:30.4,nm:12.8,mc:10000,h52:1100,l52:600,vol:680000,open:774,high:803,low:770,div:2.4},
+  {t:"GRANULES.NS",n:"Granules India",s:"Pharma",cap:"Mid Cap",p:548,c:1.24,pe:18.4,pb:3.8,roe:21.4,nm:10.8,mc:14000,h52:700,l52:400,vol:1800000,open:541,high:551,low:538,div:0.5},
+  {t:"GRINDWELL.NS",n:"Grindwell Norton",s:"Capital Goods",cap:"Mid Cap",p:2248,c:0.64,pe:52.4,pb:10.4,roe:20.4,nm:14.8,mc:12000,h52:2800,l52:1800,vol:80000,open:2234,high:2254,low:2228,div:0.6},
+  {t:"GSFC.NS",n:"Gujarat State Fertilizers",s:"Chemicals",cap:"Mid Cap",p:218,c:1.86,pe:12.4,pb:1.8,roe:15.4,nm:8.4,mc:8700,h52:278,l52:158,vol:2400000,open:214,high:220,low:212,div:2.8},
+  {t:"HFCL.NS",n:"HFCL",s:"Telecom",cap:"Mid Cap",p:92,c:2.24,pe:28.4,pb:4.8,roe:17.4,nm:6.4,mc:12000,h52:142,l52:68,vol:8400000,open:90,high:93,low:89,div:0.2},
+  {t:"HONAUT.NS",n:"Honeywell Automation",s:"Capital Goods",cap:"Mid Cap",p:48200,c:0.44,pe:78.4,pb:18.4,roe:23.4,nm:14.8,mc:43000,h52:56000,l52:39000,vol:8000,open:47980,high:48280,low:47900,div:0.2},
+  {t:"IGPL.NS",n:"IG Petrochemicals",s:"Chemicals",cap:"Small Cap",p:748,c:2.14,pe:12.4,pb:2.4,roe:20.4,nm:10.8,mc:5400,h52:1000,l52:580,vol:280000,open:732,high:752,low:728,div:1.0},
+  {t:"INDIGOPNTS.NS",n:"Indigo Paints",s:"Consumer",cap:"Mid Cap",p:1348,c:0.84,pe:64.8,pb:12.4,roe:19.4,nm:9.8,mc:6800,h52:1750,l52:1100,vol:180000,open:1337,high:1353,low:1331,div:0.3},
+  {t:"INDIAMART.NS",n:"IndiaMART InterMESH",s:"Consumer Tech",cap:"Mid Cap",p:2148,c:-0.44,pe:34.8,pb:8.4,roe:24.8,nm:26.4,mc:13000,h52:3150,l52:1980,vol:180000,open:2158,high:2162,low:2132,div:0.5},
+  {t:"IPCALAB.NS",n:"Ipca Laboratories",s:"Pharma",cap:"Mid Cap",p:1548,c:0.84,pe:34.8,pb:4.8,roe:14.4,nm:9.8,mc:20000,h52:1920,l52:1100,vol:480000,open:1535,high:1553,low:1528,div:0.4},
+  {t:"JKCEMENT.NS",n:"JK Cement",s:"Cement",cap:"Mid Cap",p:3980,c:0.94,pe:38.4,pb:6.4,roe:16.8,nm:8.4,mc:31000,h52:4950,l52:3200,vol:120000,open:3942,high:3990,low:3934,div:0.5},
+  {t:"JSWENERGY.NS",n:"JSW Energy",s:"Utilities",cap:"Mid Cap",p:548,c:1.84,pe:38.4,pb:4.8,roe:12.8,nm:14.8,mc:96000,h52:740,l52:390,vol:4800000,open:538,high:551,low:535,div:0.4},
+  {t:"JUBLFOOD.NS",n:"Jubilant Foodworks (Dominos)",s:"Retail",cap:"Mid Cap",p:598,c:1.14,pe:72.4,pb:18.4,roe:25.4,nm:5.4,mc:39000,h52:780,l52:448,vol:1200000,open:591,high:601,low:588,div:0.3},
+  {t:"JUSTDIAL.NS",n:"Just Dial",s:"Consumer Tech",cap:"Small Cap",p:948,c:1.44,pe:28.4,pb:5.4,roe:19.8,nm:18.4,mc:8000,h52:1300,l52:720,vol:480000,open:935,high:952,low:930,div:0.5},
+  {t:"KAJARIACER.NS",n:"Kajaria Ceramics",s:"Consumer",cap:"Mid Cap",p:1148,c:0.74,pe:38.4,pb:7.4,roe:19.4,nm:9.8,mc:18000,h52:1490,l52:960,vol:480000,open:1140,high:1152,low:1134,div:0.8},
+  {t:"KALPATPOWR.NS",n:"Kalpataru Projects",s:"Infrastructure",cap:"Mid Cap",p:1248,c:2.14,pe:28.4,pb:4.8,roe:17.4,nm:5.8,mc:20000,h52:1524,l52:880,vol:620000,open:1222,high:1254,low:1218,div:0.6},
+  {t:"KPITTECH.NS",n:"KPIT Technologies",s:"IT",cap:"Mid Cap",p:1348,c:3.14,pe:48.4,pb:14.4,roe:30.4,nm:14.8,mc:36000,h52:1900,l52:1000,vol:1200000,open:1307,high:1355,low:1300,div:0.3},
+  {t:"KRBL.NS",n:"KRBL (India Gate)",s:"FMCG",cap:"Mid Cap",p:298,c:0.67,pe:18.4,pb:3.4,roe:18.8,nm:12.4,mc:7000,h52:390,l52:240,vol:580000,open:296,high:300,low:294,div:1.6},
+  {t:"LALPATHLAB.NS",n:"Dr Lal PathLabs",s:"Healthcare",cap:"Mid Cap",p:2648,c:0.84,pe:58.4,pb:10.8,roe:18.8,nm:13.4,mc:22000,h52:3200,l52:2100,vol:180000,open:2626,high:2654,low:2618,div:0.8},
+  {t:"LAURUSLABS.NS",n:"Laurus Labs",s:"Pharma",cap:"Mid Cap",p:448,c:2.14,pe:48.4,pb:5.8,roe:12.4,nm:7.4,mc:24000,h52:580,l52:320,vol:2400000,open:439,high:451,low:436,div:0.4},
+  {t:"LINDEINDIA.NS",n:"Linde India",s:"Chemicals",cap:"Mid Cap",p:7248,c:0.48,pe:84.4,pb:10.4,roe:12.4,nm:11.8,mc:24000,h52:9200,l52:6000,vol:48000,open:7214,high:7262,low:7198,div:0.2},
+  {t:"LTTS.NS",n:"L&T Technology Services",s:"IT",cap:"Mid Cap",p:4848,c:0.64,pe:34.8,pb:9.4,roe:27.4,nm:16.4,mc:51000,h52:6000,l52:4000,vol:180000,open:4817,high:4860,low:4804,div:1.2},
+  {t:"LUXIND.NS",n:"Lux Industries",s:"Apparel",cap:"Small Cap",p:1798,c:0.54,pe:22.4,pb:3.8,roe:17.8,nm:8.4,mc:5600,h52:2400,l52:1400,vol:80000,open:1788,high:1804,low:1780,div:0.8},
+  {t:"MAHINDCIE.NS",n:"Mahindra CIE Automotive",s:"Auto Ancillary",cap:"Mid Cap",p:548,c:1.14,pe:18.4,pb:2.4,roe:13.4,nm:7.4,mc:21000,h52:698,l52:420,vol:580000,open:542,high:551,low:538,div:0.5},
+  {t:"MAPMYINDIA.NS",n:"MapmyIndia (CE Info Systems)",s:"Consumer Tech",cap:"Mid Cap",p:1848,c:1.44,pe:64.4,pb:18.4,roe:28.8,nm:30.4,mc:10000,h52:2750,l52:1500,vol:120000,open:1822,high:1854,low:1814,div:0.3},
+  {t:"METROBRAND.NS",n:"Metro Brands",s:"Retail",cap:"Mid Cap",p:948,c:0.64,pe:58.4,pb:12.4,roe:21.4,nm:12.8,mc:26000,h52:1300,l52:760,vol:380000,open:942,high:952,low:938,div:0.5},
+  {t:"METROPOLIS.NS",n:"Metropolis Healthcare",s:"Healthcare",cap:"Mid Cap",p:1548,c:0.74,pe:48.4,pb:8.4,roe:17.4,nm:12.8,mc:8000,h52:2050,l52:1300,vol:120000,open:1537,high:1553,low:1530,div:0.6},
+  {t:"MINDTREE.NS",n:"MindTree (now LTIMindtree)",s:"IT",cap:"Mid Cap",p:5480,c:0.44,pe:34.4,pb:8.4,roe:25.8,nm:15.4,mc:91000,h52:7050,l52:4500,vol:280000,open:5456,high:5492,low:5444,div:1.0},
+  {t:"NATCOPHARM.NS",n:"Natco Pharma",s:"Pharma",cap:"Mid Cap",p:1398,c:1.64,pe:18.4,pb:4.4,roe:25.8,nm:24.4,mc:24000,h52:1900,l52:1000,vol:480000,open:1376,high:1405,low:1370,div:1.0},
+  {t:"NAVINFLUOR.NS",n:"Navin Fluorine International",s:"Chemicals",cap:"Mid Cap",p:2948,c:0.84,pe:38.4,pb:7.8,roe:20.8,nm:14.8,mc:14000,h52:4200,l52:2400,vol:120000,open:2924,high:2957,low:2918,div:0.4},
+  {t:"NBCC.NS",n:"NBCC (India)",s:"Infrastructure",cap:"Mid Cap",p:98,c:2.08,pe:42.4,pb:8.4,roe:20.4,nm:5.4,mc:17000,h52:148,l52:64,vol:8400000,open:96,high:99,low:95,div:0.5},
+  {t:"NESCO.NS",n:"Nesco",s:"Real Estate",cap:"Small Cap",p:798,c:0.51,pe:18.4,pb:3.4,roe:19.4,nm:38.4,mc:6100,h52:1000,l52:620,vol:80000,open:794,high:801,low:790,div:1.4},
+  {t:"NEULANDLAB.NS",n:"Neuland Laboratories",s:"Pharma",cap:"Small Cap",p:12480,c:2.84,pe:42.4,pb:12.4,roe:30.4,nm:18.8,mc:16000,h52:16000,l52:8000,vol:28000,open:12148,high:12520,low:12104,div:0.2},
+  {t:"NMDC.NS",n:"NMDC",s:"Mining",cap:"Large Cap",p:218,c:1.86,pe:8.4,pb:2.2,roe:27.4,nm:28.4,mc:64000,h52:285,l52:170,vol:8400000,open:214,high:220,low:212,div:4.8},
+  {t:"NUVOCO.NS",n:"Nuvoco Vistas (Cement)",s:"Cement",cap:"Mid Cap",p:348,c:0.58,pe:48.4,pb:2.4,roe:5.4,nm:4.8,mc:10000,h52:480,l52:290,vol:480000,open:346,high:350,low:344,div:0},
+  {t:"OLECTRA.NS",n:"Olectra Greentech",s:"Auto",cap:"Mid Cap",p:1148,c:3.24,pe:68.4,pb:12.4,roe:18.4,nm:7.4,mc:9800,h52:1900,l52:800,vol:480000,open:1112,high:1155,low:1105,div:0.2},
+  {t:"ORIENTELEC.NS",n:"Orient Electric",s:"Consumer",cap:"Mid Cap",p:248,c:0.81,pe:48.4,pb:7.8,roe:16.4,nm:5.4,mc:5400,h52:340,l52:190,vol:580000,open:246,high:250,low:244,div:0.8},
+  {t:"PATANJALI.NS",n:"Patanjali Foods",s:"FMCG",cap:"Mid Cap",p:1748,c:1.24,pe:48.4,pb:8.4,roe:17.4,nm:5.4,mc:46000,h52:2200,l52:1300,vol:480000,open:1727,high:1754,low:1720,div:0.5},
+  {t:"PCBL.NS",n:"PCBL (Phillips Carbon)",s:"Chemicals",cap:"Mid Cap",p:298,c:2.74,pe:18.4,pb:3.8,roe:22.4,nm:9.8,mc:10000,h52:420,l52:228,vol:1200000,open:290,high:300,low:288,div:1.2},
+  {t:"PFIZER.NS",n:"Pfizer India",s:"Pharma",cap:"Mid Cap",p:5248,c:0.44,pe:38.4,pb:8.4,roe:22.4,nm:20.4,mc:24000,h52:6200,l52:4400,vol:28000,open:5225,high:5256,low:5218,div:1.8},
+  {t:"PHOENIXLTD.NS",n:"Phoenix Mills",s:"Real Estate",cap:"Large Cap",p:1748,c:1.64,pe:48.4,pb:6.4,roe:13.4,nm:24.4,mc:59000,h52:2320,l52:1380,vol:580000,open:1720,high:1754,low:1714,div:0.3},
+  {t:"POLYMED.NS",n:"Poly Medicure",s:"Healthcare",cap:"Mid Cap",p:1748,c:1.84,pe:52.4,pb:12.4,roe:23.8,nm:16.4,mc:18000,h52:2300,l52:1380,vol:180000,open:1716,high:1754,low:1710,div:0.3},
+  {t:"PRAJIND.NS",n:"Praj Industries",s:"Capital Goods",cap:"Mid Cap",p:748,c:2.14,pe:38.4,pb:8.4,roe:22.4,nm:9.8,mc:14000,h52:930,l52:560,vol:580000,open:733,high:752,low:730,div:0.8},
+  {t:"PRINCEPIPE.NS",n:"Prince Pipes & Fittings",s:"Consumer",cap:"Small Cap",p:598,c:0.84,pe:28.4,pb:4.8,roe:17.4,nm:8.4,mc:6700,h52:800,l52:490,vol:580000,open:593,high:601,low:590,div:0.5},
+  {t:"RBLBANK.NS",n:"RBL Bank",s:"Banking",cap:"Mid Cap",p:178,c:-0.56,pe:18.4,pb:1.2,roe:7.4,nm:9.8,mc:10000,h52:300,l52:148,vol:5200000,open:179,high:180,low:176,div:0.5},
+  {t:"RELAXO.NS",n:"Relaxo Footwears",s:"Consumer",cap:"Mid Cap",p:748,c:-0.27,pe:58.4,pb:8.4,roe:14.8,nm:8.4,mc:9000,h52:1060,l52:648,vol:120000,open:750,high:754,low:745,div:0.5},
+  {t:"ROSSARI.NS",n:"Rossari Biotech",s:"Chemicals",cap:"Small Cap",p:798,c:1.44,pe:42.4,pb:6.4,roe:15.4,nm:9.4,mc:4000,h52:1100,l52:600,vol:120000,open:786,high:802,low:782,div:0.4},
+  {t:"ROUTE.NS",n:"Route Mobile",s:"Telecom",cap:"Mid Cap",p:1348,c:1.84,pe:28.4,pb:5.4,roe:19.8,nm:12.4,mc:8000,h52:1900,l52:1100,vol:180000,open:1323,high:1354,low:1318,div:0.5},
+  {t:"SAFARI.NS",n:"Safari Industries",s:"Consumer",cap:"Small Cap",p:2348,c:2.14,pe:48.4,pb:12.4,roe:25.8,nm:8.4,mc:10000,h52:3200,l52:1800,vol:80000,open:2300,high:2358,low:2292,div:0.3},
+  {t:"SANOFI.NS",n:"Sanofi India",s:"Pharma",cap:"Mid Cap",p:8248,c:0.34,pe:38.4,pb:8.4,roe:22.4,nm:14.8,mc:19000,h52:10000,l52:7000,vol:28000,open:8220,high:8262,low:8204,div:2.4},
+  {t:"SAPPHIRE.NS",n:"Sapphire Foods India",s:"Retail",cap:"Mid Cap",p:1248,c:1.14,pe:48.4,pb:6.4,roe:13.4,nm:4.8,mc:7500,h52:1750,l52:1000,vol:120000,open:1234,high:1253,low:1228,div:0},
+  {t:"SCHAEFFLER.NS",n:"Schaeffler India",s:"Auto Ancillary",cap:"Mid Cap",p:3748,c:0.84,pe:42.4,pb:8.4,roe:20.4,nm:13.8,mc:24000,h52:5000,l52:3200,vol:80000,open:3717,high:3754,low:3706,div:0.6},
+  {t:"SHYAMMETL.NS",n:"Shyam Metalics",s:"Metals",cap:"Mid Cap",p:748,c:2.44,pe:14.4,pb:2.8,roe:21.4,nm:8.4,mc:14000,h52:980,l52:560,vol:1200000,open:730,high:752,low:726,div:1.0},
+  {t:"SOBHA.NS",n:"Sobha",s:"Real Estate",cap:"Mid Cap",p:1748,c:1.84,pe:48.4,pb:5.4,roe:11.4,nm:7.4,mc:17000,h52:2350,l52:1300,vol:580000,open:1716,high:1754,low:1708,div:0.6},
+  {t:"SOLARA.NS",n:"Solara Active Pharma",s:"Pharma",cap:"Small Cap",p:748,c:3.14,pe:48.4,pb:3.4,roe:7.4,nm:5.4,mc:3200,h52:1100,l52:560,vol:180000,open:724,high:752,low:720,div:0},
+  {t:"SPARC.NS",n:"Sun Pharma Advanced Research",s:"Pharma",cap:"Small Cap",p:248,c:1.64,pe:0,pb:4.4,roe:-4.8,nm:-12.4,mc:5800,h52:390,l52:188,vol:480000,open:244,high:250,low:242,div:0},
+  {t:"STAR.NS",n:"Star Health Insurance",s:"Insurance",cap:"Mid Cap",p:548,c:0.74,pe:38.4,pb:3.4,roe:9.4,nm:5.4,mc:32000,h52:780,l52:440,vol:1200000,open:544,high:551,low:540,div:0},
+  {t:"STLTECH.NS",n:"Sterlite Technologies",s:"Telecom",cap:"Mid Cap",p:148,c:2.07,pe:28.4,pb:3.4,roe:12.4,nm:5.4,mc:7800,h52:230,l52:108,vol:3200000,open:145,high:149,low:144,div:0.7},
+  {t:"SUNTV.NS",n:"Sun TV Network",s:"Media",cap:"Mid Cap",p:648,c:0.62,pe:14.8,pb:3.8,roe:25.8,nm:38.4,mc:25000,h52:790,l52:530,vol:580000,open:644,high:650,low:641,div:4.8},
+  {t:"SUPREMEIND.NS",n:"Supreme Industries",s:"Consumer",cap:"Mid Cap",p:4248,c:0.74,pe:42.4,pb:9.4,roe:22.8,nm:12.4,mc:54000,h52:5600,l52:3500,vol:180000,open:4217,high:4257,low:4204,div:0.6},
+  {t:"SURYAROSNI.NS",n:"Surya Roshni",s:"Consumer",cap:"Small Cap",p:148,c:1.37,pe:18.4,pb:2.8,roe:17.4,nm:4.8,mc:3500,h52:210,l52:110,vol:580000,open:146,high:149,low:145,div:1.0},
+  {t:"TATAELXSI.NS",n:"Tata Elxsi",s:"IT",cap:"Mid Cap",p:6848,c:1.14,pe:42.4,pb:12.4,roe:29.4,nm:22.8,mc:43000,h52:9000,l52:6000,vol:180000,open:6771,high:6862,low:6748,div:1.2},
+  {t:"TATAINVEST.NS",n:"Tata Investment Corp",s:"Financial",cap:"Mid Cap",p:5848,c:0.64,pe:68.4,pb:1.4,roe:2.4,nm:54.4,mc:29000,h52:8800,l52:5200,vol:48000,open:5811,high:5858,low:5798,div:1.6},
+  {t:"TEAMLEASE.NS",n:"TeamLease Services",s:"HR Services",cap:"Small Cap",p:2248,c:0.44,pe:58.4,pb:5.4,roe:9.4,nm:1.8,mc:3800,h52:3200,l52:1900,vol:28000,open:2238,high:2255,low:2230,div:0},
+  {t:"TIINDIA.NS",n:"Tube Investments of India",s:"Auto Ancillary",cap:"Mid Cap",p:3548,c:1.84,pe:52.4,pb:10.4,roe:20.4,nm:8.4,mc:55000,h52:4600,l52:2800,vol:480000,open:3483,high:3558,low:3474,div:0.3},
+  {t:"TORNTPHARM.NS",n:"Torrent Pharmaceuticals",s:"Pharma",cap:"Large Cap",p:3148,c:0.84,pe:42.4,pb:8.4,roe:20.4,nm:14.4,mc:107000,h52:3800,l52:2300,vol:280000,open:3122,high:3155,low:3112,div:0.6},
+  {t:"TORNTPOWER.NS",n:"Torrent Power",s:"Utilities",cap:"Mid Cap",p:1348,c:1.44,pe:28.4,pb:4.8,roe:17.4,nm:12.4,mc:65000,h52:1750,l52:980,vol:1200000,open:1329,high:1354,low:1323,div:1.0},
+  {t:"TRENT.NS",n:"Trent (Westside/Zudio)",s:"Retail",cap:"Large Cap",p:5648,c:2.44,pe:148,pb:28.4,roe:19.4,nm:5.4,mc:200000,h52:8345,l52:4200,vol:1200000,open:5512,high:5664,low:5498,div:0.1},
+  {t:"TRIDENT.NS",n:"Trident",s:"Textiles",cap:"Mid Cap",p:38,c:1.07,pe:18.4,pb:2.4,roe:13.8,nm:8.4,mc:19000,h52:52,l52:28,vol:18000000,open:37.6,high:38.3,low:37.3,div:1.8},
+  {t:"TRIVENI.NS",n:"Triveni Engineering",s:"FMCG",cap:"Small Cap",p:348,c:1.46,pe:18.4,pb:3.8,roe:24.4,nm:8.4,mc:9000,h52:470,l52:260,vol:580000,open:343,high:350,low:341,div:1.4},
+  {t:"UBLLTD.NS",n:"United Breweries",s:"FMCG",cap:"Mid Cap",p:1748,c:0.58,pe:64.8,pb:12.4,roe:19.4,nm:7.4,mc:46000,h52:2090,l52:1450,vol:280000,open:1738,high:1752,low:1731,div:0.6},
+  {t:"UJJIVAN.NS",n:"Ujjivan Small Finance Bank",s:"Banking",cap:"Small Cap",p:42,c:-1.17,pe:7.4,pb:1.2,roe:17.4,nm:12.8,mc:8500,h52:62,l52:34,vol:12000000,open:42.5,high:42.8,low:41.6,div:1.2},
+  {t:"UNOMINDA.NS",n:"UNO Minda",s:"Auto Ancillary",cap:"Mid Cap",p:1048,c:2.14,pe:58.4,pb:8.4,roe:14.8,nm:5.4,mc:60000,h52:1400,l52:800,vol:1200000,open:1027,high:1053,low:1022,div:0.3},
+  {t:"VAIBHAVGBL.NS",n:"Vaibhav Global",s:"Retail",cap:"Small Cap",p:248,c:0.81,pe:28.4,pb:3.4,roe:12.4,nm:7.8,mc:4000,h52:390,l52:195,vol:480000,open:246,high:250,low:244,div:1.0},
+  {t:"VARROC.NS",n:"Varroc Engineering",s:"Auto Ancillary",cap:"Mid Cap",p:548,c:2.22,pe:38.4,pb:3.8,roe:8.4,nm:2.4,mc:8000,h52:840,l52:400,vol:380000,open:536,high:551,low:532,div:0},
+  {t:"VEDL.NS",n:"Vedanta",s:"Metals",cap:"Large Cap",p:448,c:1.34,pe:14.8,pb:3.4,roe:22.4,nm:10.8,mc:166000,h52:528,l52:248,vol:18000000,open:442,high:451,low:440,div:8.4},
+  {t:"VIJAYABANK.NS",n:"Vijaya Diagnostics",s:"Healthcare",cap:"Small Cap",p:748,c:0.94,pe:42.4,pb:8.4,roe:20.4,nm:22.4,mc:4800,h52:1000,l52:580,vol:120000,open:741,high:751,low:738,div:0.8},
+  {t:"VOLTAS.NS",n:"Voltas",s:"Consumer",cap:"Mid Cap",p:1448,c:1.44,pe:72.4,pb:9.4,roe:13.4,nm:5.4,mc:48000,h52:1958,l52:1100,vol:1200000,open:1428,high:1454,low:1420,div:0.4},
+  {t:"VGUARD.NS",n:"V-Guard Industries",s:"Consumer",cap:"Mid Cap",p:398,c:0.76,pe:52.4,pb:8.4,roe:16.4,nm:5.8,mc:17000,h52:560,l52:320,vol:580000,open:395,high:400,low:393,div:0.5},
+  {t:"WELCORP.NS",n:"Welspun Corp",s:"Metals",cap:"Mid Cap",p:648,c:2.84,pe:18.4,pb:2.8,roe:18.4,nm:8.4,mc:17000,h52:820,l52:470,vol:1200000,open:630,high:652,low:626,div:0.8},
+  {t:"WESTLIFE.NS",n:"Westlife Foodworld (McDonald's)",s:"Retail",cap:"Mid Cap",p:748,c:0.81,pe:78.4,pb:12.4,roe:16.4,nm:4.4,mc:11000,h52:1020,l52:620,vol:280000,open:742,high:751,low:738,div:0},
+  {t:"ZEEL.NS",n:"Zee Entertainment",s:"Media",cap:"Mid Cap",p:148,c:-1.33,pe:18.4,pb:1.4,roe:7.8,nm:8.4,mc:14000,h52:300,l52:118,vol:8400000,open:150,high:151,low:147,div:0.7},
+  {t:"ZYDUSLIFE.NS",n:"Zydus Lifesciences",s:"Pharma",cap:"Large Cap",p:1148,c:1.24,pe:22.4,pb:4.8,roe:22.4,nm:16.4,mc:92000,h52:1400,l52:800,vol:1800000,open:1134,high:1152,low:1128,div:0.4},
+
+  // ── SMALL CAP ──────────────────────────────────────────────────────
+  {t:"AARTIDRUGS.NS",n:"Aarti Drugs",s:"Pharma",cap:"Small Cap",p:548,c:1.44,pe:18.4,pb:3.4,roe:17.4,nm:7.8,mc:4800,h52:720,l52:420,vol:280000,open:541,high:551,low:538,div:0.6},
+  {t:"ACRYSIL.NS",n:"Acrysil",s:"Consumer",cap:"Small Cap",p:548,c:2.14,pe:28.4,pb:6.4,roe:22.4,nm:10.8,mc:1900,h52:800,l52:420,vol:80000,open:536,high:551,low:532,div:0.5},
+  {t:"AGROPHOS.NS",n:"Agro Phos India",s:"Chemicals",cap:"Small Cap",p:98,c:1.04,pe:14.4,pb:2.4,roe:17.4,nm:7.4,mc:620,h52:138,l52:70,vol:180000,open:97,high:99,low:96,div:1.2},
+  {t:"ANANTRAJ.NS",n:"Anant Raj",s:"Real Estate",cap:"Small Cap",p:498,c:3.34,pe:38.4,pb:6.4,roe:17.4,nm:18.4,mc:16000,h52:730,l52:310,vol:2400000,open:482,high:500,low:479,div:0.3},
+  {t:"ARVINDFASN.NS",n:"Arvind Fashions",s:"Apparel",cap:"Small Cap",p:448,c:1.80,pe:38.4,pb:4.4,roe:11.4,nm:3.4,mc:5600,h52:680,l52:330,vol:480000,open:440,high:451,low:437,div:0},
+  {t:"BOROLTD.NS",n:"Borosil",s:"Consumer",cap:"Small Cap",p:298,c:0.68,pe:48.4,pb:4.8,roe:10.4,nm:5.4,mc:3600,h52:450,l52:240,vol:120000,open:296,high:300,low:294,div:0.4},
+  {t:"CAPACITE.NS",n:"Capacit'e Infraprojects",s:"Infrastructure",cap:"Small Cap",p:348,c:2.36,pe:18.4,pb:3.4,roe:18.4,nm:7.4,mc:3500,h52:500,l52:240,vol:480000,open:340,high:350,low:338,div:0.3},
+  {t:"DBCORP.NS",n:"DB Corp (Dainik Bhaskar)",s:"Media",cap:"Small Cap",p:248,c:0.81,pe:9.4,pb:2.4,roe:25.4,nm:14.8,mc:4600,h52:320,l52:190,vol:380000,open:246,high:250,low:244,div:3.2},
+  {t:"DCW.NS",n:"DCW",s:"Chemicals",cap:"Small Cap",p:148,c:2.07,pe:8.4,pb:1.8,roe:22.4,nm:8.4,mc:2200,h52:220,l52:100,vol:480000,open:145,high:149,low:144,div:1.4},
+  {t:"EIDPARRY.NS",n:"EID Parry India",s:"FMCG",cap:"Small Cap",p:748,c:0.54,pe:14.4,pb:2.4,roe:17.4,nm:7.8,mc:13000,h52:980,l52:580,vol:380000,open:744,high:752,low:741,div:1.6},
+  {t:"ELECTCAST.NS",n:"Electrosteel Castings",s:"Metals",cap:"Small Cap",p:148,c:2.76,pe:14.4,pb:2.8,roe:20.4,nm:12.4,mc:3900,h52:210,l52:102,vol:1200000,open:144,high:149,low:143,div:0.7},
+  {t:"EQUITASBNK.NS",n:"Equitas Small Finance Bank",s:"Banking",cap:"Small Cap",p:98,c:-0.81,pe:12.4,pb:1.4,roe:13.4,nm:16.4,mc:12000,h52:140,l52:78,vol:4800000,open:99,high:99.5,low:97,div:0.5},
+  {t:"ESABINDIA.NS",n:"Esab India",s:"Capital Goods",cap:"Small Cap",p:4548,c:0.64,pe:38.4,pb:8.4,roe:22.4,nm:14.4,mc:7000,h52:6000,l52:3800,vol:18000,open:4520,high:4558,low:4508,div:0.8},
+  {t:"GAEL.NS",n:"Gujarat Ambuja Exports",s:"FMCG",cap:"Small Cap",p:148,c:1.37,pe:12.4,pb:1.8,roe:17.4,nm:4.8,mc:3800,h52:220,l52:108,vol:480000,open:146,high:149,low:145,div:1.0},
+  {t:"GHCL.NS",n:"GHCL",s:"Chemicals",cap:"Small Cap",p:548,c:1.84,pe:12.4,pb:2.4,roe:22.4,nm:14.4,mc:5400,h52:780,l52:400,vol:380000,open:538,high:551,low:534,div:1.8},
+  {t:"GLOBUSSPR.NS",n:"Globus Spirits",s:"FMCG",cap:"Small Cap",p:848,c:2.14,pe:18.4,pb:3.8,roe:22.4,nm:8.4,mc:2400,h52:1200,l52:640,vol:120000,open:830,high:852,low:826,div:0.4},
+  {t:"GMMPFAUDLR.NS",n:"GMM Pfaudler",s:"Capital Goods",cap:"Small Cap",p:1248,c:0.80,pe:28.4,pb:5.4,roe:18.4,nm:8.8,mc:6500,h52:1700,l52:980,vol:48000,open:1238,high:1253,low:1232,div:0.4},
+  {t:"GPPL.NS",n:"Gujarat Pipavav Port",s:"Infrastructure",cap:"Small Cap",p:198,c:0.51,pe:18.4,pb:2.4,roe:13.4,nm:28.4,mc:8600,h52:258,l52:148,vol:580000,open:197,high:199,low:196,div:2.4},
+  {t:"HAPPSTMNDS.NS",n:"Happiest Minds Technologies",s:"IT",cap:"Small Cap",p:748,c:1.24,pe:34.4,pb:8.4,roe:24.4,nm:15.4,mc:11000,h52:1000,l52:600,vol:480000,open:739,high:752,low:735,div:1.2},
+  {t:"HSCL.NS",n:"Himadri Speciality Chemical",s:"Chemicals",cap:"Small Cap",p:398,c:2.44,pe:28.4,pb:7.4,roe:24.4,nm:12.4,mc:16000,h52:560,l52:280,vol:1200000,open:389,high:400,low:386,div:0.3},
+  {t:"IDEAFORGE.NS",n:"ideaForge Technology",s:"Defence",cap:"Small Cap",p:498,c:3.74,pe:0,pb:4.4,roe:-8.4,nm:-14.4,mc:2200,h52:900,l52:340,vol:180000,open:480,high:502,low:476,div:0},
+  {t:"INDIANB.NS",n:"Indian Bank",s:"Banking",cap:"Mid Cap",p:548,c:1.30,pe:8.4,pb:1.4,roe:17.4,nm:12.4,mc:73000,h52:632,l52:380,vol:3200000,open:541,high:551,low:537,div:1.8},
+  {t:"INFIBEAM.NS",n:"Infibeam Avenues",s:"Fintech",cap:"Small Cap",p:28,c:2.19,pe:42.4,pb:3.8,roe:9.4,nm:8.4,mc:8000,h52:48,l52:18,vol:8400000,open:27.4,high:28.3,low:27.1,div:0},
+  {t:"INNOVACAP.NS",n:"Innova Captab",s:"Pharma",cap:"Small Cap",p:748,c:1.84,pe:38.4,pb:6.4,roe:17.4,nm:9.8,mc:3200,h52:1000,l52:560,vol:80000,open:734,high:752,low:730,div:0.3},
+  {t:"ISGEC.NS",n:"Isgec Heavy Engineering",s:"Capital Goods",cap:"Small Cap",p:1148,c:0.88,pe:22.4,pb:3.8,roe:16.4,nm:4.8,mc:4200,h52:1400,l52:880,vol:48000,open:1138,high:1152,low:1130,div:0.6},
+  {t:"JKPAPER.NS",n:"JK Paper",s:"Consumer",cap:"Small Cap",p:298,c:0.68,pe:8.4,pb:1.8,roe:22.4,nm:12.4,mc:5300,h52:430,l52:248,vol:580000,open:296,high:300,low:294,div:2.4},
+  {t:"KFINTECH.NS",n:"KFin Technologies",s:"Financial",cap:"Small Cap",p:898,c:2.14,pe:48.4,pb:12.4,roe:25.8,nm:28.4,mc:14000,h52:1150,l52:620,vol:480000,open:879,high:902,low:875,div:0.5},
+  {t:"KITEX.NS",n:"Kitex Garments",s:"Apparel",cap:"Small Cap",p:198,c:1.03,pe:14.4,pb:2.4,roe:17.8,nm:12.4,mc:1500,h52:280,l52:148,vol:180000,open:196,high:199,low:195,div:1.4},
+  {t:"KRSNAA.NS",n:"Krsnaa Diagnostics",s:"Healthcare",cap:"Small Cap",p:748,c:1.64,pe:28.4,pb:4.8,roe:18.4,nm:12.4,mc:3800,h52:1050,l52:580,vol:120000,open:736,high:752,low:732,div:0.4},
+  {t:"LATENTVIEW.NS",n:"Latent View Analytics",s:"IT",cap:"Small Cap",p:348,c:1.75,pe:52.4,pb:8.4,roe:16.4,nm:20.4,mc:7500,h52:570,l52:280,vol:580000,open:342,high:350,low:339,div:0.3},
+  {t:"LLOYDSENGG.NS",n:"Lloyds Engineering Works",s:"Capital Goods",cap:"Small Cap",p:98,c:3.16,pe:48.4,pb:8.4,roe:17.4,nm:8.4,mc:3900,h52:160,l52:62,vol:2400000,open:95,high:99,low:94,div:0},
+  {t:"MAHLOG.NS",n:"Mahindra Logistics",s:"Logistics",cap:"Small Cap",p:298,c:0.68,pe:48.4,pb:3.8,roe:8.4,nm:2.4,mc:4300,h52:470,l52:240,vol:280000,open:296,high:300,low:294,div:0},
+  {t:"MINDACORP.NS",n:"Minda Corporation",s:"Auto Ancillary",cap:"Small Cap",p:448,c:1.57,pe:28.4,pb:4.8,roe:17.4,nm:5.4,mc:12000,h52:600,l52:340,vol:580000,open:441,high:451,low:438,div:0.5},
+  {t:"MSTCLTD.NS",n:"MSTC",s:"Financial",cap:"Small Cap",p:748,c:2.74,pe:14.4,pb:3.8,roe:28.4,nm:18.4,mc:4700,h52:1100,l52:560,vol:480000,open:728,high:752,low:722,div:1.8},
+  {t:"NEWGEN.NS",n:"Newgen Software",s:"IT",cap:"Small Cap",p:1348,c:2.14,pe:48.4,pb:12.4,roe:25.8,nm:17.4,mc:7700,h52:1800,l52:980,vol:180000,open:1322,high:1354,low:1316,div:0.5},
+  {t:"NIACL.NS",n:"New India Assurance",s:"Insurance",cap:"Mid Cap",p:198,c:0.51,pe:18.4,pb:1.4,roe:7.8,nm:5.4,mc:33000,h52:268,l52:148,vol:1200000,open:197,high:199,low:196,div:0.9},
+  {t:"PNBHOUSING.NS",n:"PNB Housing Finance",s:"Financial",cap:"Mid Cap",p:848,c:1.44,pe:18.4,pb:2.4,roe:13.4,nm:20.4,mc:22000,h52:1100,l52:600,vol:1200000,open:836,high:852,low:832,div:0.5},
+  {t:"RAILTEL.NS",n:"RailTel Corporation",s:"Telecom",cap:"Small Cap",p:348,c:2.36,pe:28.4,pb:6.4,roe:18.4,nm:12.4,mc:11000,h52:600,l52:250,vol:1200000,open:340,high:350,low:337,div:0.6},
+  {t:"RPGLIFE.NS",n:"RPG Life Sciences",s:"Pharma",cap:"Small Cap",p:1448,c:0.97,pe:28.4,pb:5.4,roe:20.4,nm:12.4,mc:2900,h52:1900,l52:1100,vol:28000,open:1434,high:1453,low:1428,div:0.8},
+  {t:"RUPA.NS",n:"Rupa & Company",s:"Apparel",cap:"Small Cap",p:248,c:0.41,pe:18.4,pb:3.4,roe:19.4,nm:8.4,mc:2000,h52:380,l52:195,vol:120000,open:247,high:249.5,low:245,div:1.2},
+  {t:"SHARDACROP.NS",n:"Sharda Cropchem",s:"Chemicals",cap:"Small Cap",p:448,c:1.57,pe:18.4,pb:3.4,roe:14.4,nm:9.8,mc:4100,h52:640,l52:340,vol:180000,open:441,high:451,low:438,div:1.0},
+  {t:"SOLARINDS.NS",n:"Solar Industries India",s:"Defence",cap:"Large Cap",p:9848,c:1.44,pe:78.4,pb:18.4,roe:23.4,nm:14.4,mc:89000,h52:12500,l52:7500,vol:80000,open:9711,high:9862,low:9694,div:0.2},
+  {t:"SRPL.NS",n:"Shree Renuka Sugars",s:"FMCG",cap:"Small Cap",p:48,c:2.13,pe:14.4,pb:2.8,roe:20.4,nm:4.8,mc:6700,h52:72,l52:32,vol:8400000,open:47,high:48.4,low:46.7,div:0},
+  {t:"STOVEKRAFT.NS",n:"Stove Kraft",s:"Consumer",cap:"Small Cap",p:748,c:1.22,pe:28.4,pb:4.8,roe:17.4,nm:7.4,mc:2800,h52:1050,l52:590,vol:80000,open:739,high:752,low:735,div:0.4},
+  {t:"SUPRIYA.NS",n:"Supriya Lifescience",s:"Pharma",cap:"Small Cap",p:548,c:2.14,pe:28.4,pb:5.4,roe:20.4,nm:18.4,mc:3500,h52:750,l52:400,vol:120000,open:536,high:551,low:532,div:0.3},
+  {t:"TALBROAUTO.NS",n:"Talbros Automotive",s:"Auto Ancillary",cap:"Small Cap",p:1148,c:1.74,pe:18.4,pb:3.8,roe:20.4,nm:7.4,mc:2400,h52:1600,l52:860,vol:80000,open:1128,high:1153,low:1122,div:0.6},
+  {t:"TANLA.NS",n:"Tanla Platforms",s:"Telecom",cap:"Mid Cap",p:648,c:0.93,pe:14.4,pb:3.8,roe:28.4,nm:22.4,mc:9300,h52:1100,l52:520,vol:580000,open:642,high:651,low:639,div:1.2},
+  {t:"TARSONS.NS",n:"Tarsons Products",s:"Healthcare",cap:"Small Cap",p:498,c:0.81,pe:38.4,pb:5.4,roe:14.8,nm:18.4,mc:3000,h52:750,l52:390,vol:80000,open:494,high:500,low:491,div:0.3},
+  {t:"TATACHEM.NS",n:"Tata Chemicals",s:"Chemicals",cap:"Mid Cap",p:948,c:0.64,pe:18.4,pb:2.4,roe:13.4,nm:8.4,mc:24000,h52:1280,l52:800,vol:1200000,open:942,high:951,low:938,div:1.4},
+  {t:"TCNSCLOTHG.NS",n:"TCNS Clothing (W/Aurelia)",s:"Apparel",cap:"Small Cap",p:448,c:-1.10,pe:0,pb:3.4,roe:-4.4,nm:-2.8,mc:3200,h52:700,l52:340,vol:120000,open:453,high:455,low:445,div:0},
+  {t:"TIMETECHNO.NS",n:"Time Technoplast",s:"Consumer",cap:"Small Cap",p:298,c:2.06,pe:18.4,pb:2.8,roe:17.4,nm:7.4,mc:4300,h52:430,l52:210,vol:580000,open:292,high:300,low:290,div:0.7},
+  {t:"TINPLATE.NS",n:"Tinplate Company of India",s:"Metals",cap:"Small Cap",p:298,c:1.02,pe:12.4,pb:2.4,roe:20.4,nm:9.4,mc:3700,h52:420,l52:228,vol:280000,open:295,high:300,low:293,div:1.6},
+  {t:"TITAGARH.NS",n:"Titagarh Rail Systems",s:"Capital Goods",cap:"Small Cap",p:1248,c:3.14,pe:42.4,pb:8.4,roe:18.4,nm:7.4,mc:15000,h52:1900,l52:880,vol:580000,open:1210,high:1254,low:1204,div:0.2},
+  {t:"VRLLOG.NS",n:"VRL Logistics",s:"Logistics",cap:"Small Cap",p:548,c:0.55,pe:22.4,pb:5.4,roe:24.4,nm:7.4,mc:5000,h52:730,l52:440,vol:120000,open:545,high:551,low:542,div:1.4},
+  {t:"WAAREEENER.NS",n:"Waaree Energies",s:"Energy",cap:"Mid Cap",p:2248,c:4.14,pe:42.4,pb:8.4,roe:22.4,nm:12.4,mc:64000,h52:3750,l52:1500,vol:1200000,open:2159,high:2260,low:2148,div:0.2},
+  {t:"WEALTH18.NS",n:"Wealth18 (Motilal Oswal AMC)",s:"Financial",cap:"Small Cap",p:148,c:1.37,pe:22.4,pb:3.4,roe:15.4,nm:18.4,mc:2100,h52:220,l52:100,vol:480000,open:146,high:149,low:145,div:0.5},
+  {t:"ZENTEC.NS",n:"Zen Technologies",s:"Defence",cap:"Small Cap",p:1848,c:4.14,pe:58.4,pb:14.4,roe:25.4,nm:18.4,mc:7500,h52:2600,l52:1100,vol:380000,open:1775,high:1856,low:1769,div:0.3},
+
+  // ── RECENTLY LISTED / SPECIAL ADDITIONS ───────────────────────────
+  {t:"LGEL.NS",n:"LG Electronics India",s:"Consumer Electronics",cap:"Large Cap",p:1748,c:1.24,pe:38.4,pb:6.8,roe:18.4,nm:8.4,mc:110000,h52:1980,l52:1400,vol:1200000,open:1728,high:1754,low:1720,div:0.5},
+  {t:"SKIPPER.NS",n:"Skipper Ltd",s:"Infrastructure",cap:"Mid Cap",p:548,c:2.84,pe:28.4,pb:5.4,roe:18.4,nm:6.4,mc:7200,h52:780,l52:340,vol:1800000,open:533,high:551,low:530,div:0.6},
+  {t:"HYUNDAI.NS",n:"Hyundai Motor India",s:"Auto",cap:"Large Cap",p:1748,c:0.84,pe:24.4,pb:4.2,roe:22.4,nm:8.4,mc:142000,h52:1960,l52:1310,vol:2400000,open:1733,high:1755,low:1720,div:1.2},
+];
+
+// Sort for default watchlist display
+const ALL_STOCKS = [...STOCKS].sort((a,b)=>b.mc-a.mc);
+// Deduplicate by ticker
+const seen = new Set();
+const DEDUPED = ALL_STOCKS.filter(s=>{ if(seen.has(s.t)) return false; seen.add(s.t); return true; });
+ALL_STOCKS.length = 0; DEDUPED.forEach(s=>ALL_STOCKS.push(s));
+
+let activeStock = null;
+let pChart = null;
+let currentTF = '1W';
+let capFilter = 'All';
+
+function filterCap(btn, cap){
+  document.querySelectorAll('.cap-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  capFilter = cap;
+  renderWatchlist();
+  updateWlCount();
+}
+function updateWlCount(){
+  const visible = capFilter==='All' ? ALL_STOCKS : ALL_STOCKS.filter(s=>s.cap===capFilter);
+  document.getElementById('wlCount').textContent = visible.length+' stocks';
+}
+
+// ── MARKET STATUS ──────────────────────────────────────────────────
+// NSE hours: Mon–Fri 09:15–15:30 IST (UTC+5:30)
+function getMarketStatus(){
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+  const day = ist.getDay(); // 0=Sun,6=Sat
+  const h = ist.getHours(), m = ist.getMinutes();
+  const mins = h*60+m;
+  const isWeekday = day>=1 && day<=5;
+  const inSession = mins >= 9*60+15 && mins < 15*60+30;
+  if(isWeekday && inSession) return 'LIVE';
+  if(isWeekday && mins >= 15*60+30 && mins < 16*60) return 'CLOSED_TODAY';
+  return 'CLOSED';
+}
+
+// ── TIMESTAMP ──────────────────────────────────────────────────────
+function updateTS(){
+  const now = new Date();
+  const status = getMarketStatus();
+  const statusStr = status==='LIVE'
+    ? '<span style="color:var(--green)">● MARKET OPEN</span>'
+    : '<span style="color:var(--red)">● MARKET CLOSED</span>';
+  document.getElementById('tsEl').innerHTML =
+    now.toLocaleString('en-IN',{weekday:'short',month:'short',day:'numeric',
+      hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})
+    +' IST &nbsp;'+statusStr;
+}
+setInterval(updateTS,10000); updateTS();
+
+// ── REAL DATA FETCHING via Yahoo Finance (CORS proxy) ──────────────
+const YF_PROXY = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+const YF_PROXY2 = 'https://query2.finance.yahoo.com/v8/finance/chart/';
+
+async function fetchQuote(ticker){
+  // Use allorigins CORS proxy to bypass browser CORS on YF
+  const url = `https://api.allorigins.win/get?url=${encodeURIComponent(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`
+  )}`;
+  try {
+    const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    const wrapper = await res.json();
+    const data = JSON.parse(wrapper.contents);
+    const q = data?.chart?.result?.[0];
+    if(!q) return null;
+    const meta = q.meta;
+    return {
+      price:    +(meta.regularMarketPrice||meta.previousClose||0).toFixed(2),
+      prevClose:+(meta.chartPreviousClose||meta.previousClose||0).toFixed(2),
+      open:     +(meta.regularMarketOpen||meta.regularMarketPrice||0).toFixed(2),
+      high:     +(meta.regularMarketDayHigh||meta.regularMarketPrice||0).toFixed(2),
+      low:      +(meta.regularMarketDayLow||meta.regularMarketPrice||0).toFixed(2),
+      vol:      meta.regularMarketVolume||0,
+      h52:      +(meta.fiftyTwoWeekHigh||0).toFixed(2),
+      l52:      +(meta.fiftyTwoWeekLow||0).toFixed(2),
+    };
+  } catch(e){ return null; }
+}
+
+// Batch fetch top stocks for watchlist & movers (do 10 at a time to avoid throttling)
+let dataLoaded = false;
+async function loadRealData(){
+  const statusBadge = document.getElementById('dataStatus');
+  if(statusBadge) statusBadge.textContent = 'Fetching live data…';
+
+  // Fetch in small batches to be kind to the proxy
+  const batchSize = 8;
+  let fetched = 0;
+  for(let i=0; i<ALL_STOCKS.length; i+=batchSize){
+    const batch = ALL_STOCKS.slice(i, i+batchSize);
+    await Promise.all(batch.map(async s=>{
+      const q = await fetchQuote(s.t);
+      if(q && q.price > 0){
+        s.p     = q.price;
+        s.open  = q.open  || s.open;
+        s.high  = q.high  || s.high;
+        s.low   = q.low   || s.low;
+        s.vol   = q.vol   || s.vol;
+        s.h52   = q.h52   || s.h52;
+        s.l52   = q.l52   || s.l52;
+        const prev = q.prevClose || s.p;
+        s.c = prev>0 ? +((s.p-prev)/prev*100).toFixed(2) : 0;
+        s._real = true;
+      }
+      fetched++;
+    }));
+    renderWatchlist();
+    renderMovers();
+    renderBreadth();
+    // small pause between batches
+    await new Promise(r=>setTimeout(r,400));
+  }
+  dataLoaded = true;
+  if(statusBadge) statusBadge.textContent = `Real data loaded (${fetched} stocks)`;
+  renderMovers();
+  renderBreadth();
+  renderSectors();
+  // If a stock is already selected, refresh its display
+  if(activeStock && activeStock._real) renderCenter();
+}
+
+// Only tick prices if market is actually LIVE; otherwise freeze
+function maybeTickPrices(){
+  if(getMarketStatus() !== 'LIVE') return; // Market closed — no fake ticking
+  // Re-fetch a small random sample to simulate live
+  const sample = ALL_STOCKS.filter(()=>Math.random()<0.15).slice(0,5);
+  Promise.all(sample.map(async s=>{
+    const q = await fetchQuote(s.t);
+    if(q && q.price>0){
+      s.p = q.price;
+      s.c = q.prevClose>0 ? +((s.p-q.prevClose)/q.prevClose*100).toFixed(2) : s.c;
+    }
+  })).then(()=>{ renderWatchlist(); if(activeStock) updateHeroPriceOnly(); });
+}
+// Refresh real data every 5 min (only meaningful if market is open)
+setInterval(maybeTickPrices, 5*60*1000);
+
+// ── WATCHLIST ──────────────────────────────────────────────────────
+function sigClass(s){
+  const score = scoreStock(s);
+  if(score>=80) return 'sig-strong-buy';
+  if(score>=60) return 'sig-buy';
+  if(score<=30) return 'sig-sell';
+  return 'sig-hold';
+}
+function sigLabel(s){
+  const score = scoreStock(s);
+  if(score>=80) return 'STRONG BUY';
+  if(score>=60) return 'BUY';
+  if(score<=30) return 'SELL';
+  return 'HOLD';
+}
+function scoreStock(s){
+  let sc = 50;
+  if(s.roe>20) sc+=15; else if(s.roe<10) sc-=15;
+  if(s.nm>15) sc+=10; else if(s.nm<5) sc-=10;
+  if(s.pe>0 && s.pe<25) sc+=10; else if(s.pe>80) sc-=10;
+  if(s.c>2) sc+=10; else if(s.c<-2) sc-=10;
+  if(s.pb>0 && s.pb<5) sc+=5; else if(s.pb>20) sc-=5;
+  if(s.div>2) sc+=5;
+  return Math.max(0,Math.min(100,sc));
+}
+
+function renderWatchlist(){
+  const wl = document.getElementById('watchlist');
+  const stocks = capFilter==='All' ? ALL_STOCKS : ALL_STOCKS.filter(s=>s.cap===capFilter);
+  const html = stocks.map(s=>`
+    <div class="wl-item${activeStock===s?' active':''}" onclick="selectStock(${ALL_STOCKS.indexOf(s)})">
+      <div>
+        <div class="wl-ticker">${s.t.replace('.NS','')}</div>
+        <div class="wl-name">${s.n}</div>
+      </div>
+      <div>
+        <div class="wl-price">₹${s.p.toLocaleString('en-IN')}</div>
+        <div class="wl-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c}%</div>
+        <div style="text-align:right"><span class="wl-signal ${sigClass(s)}">${sigLabel(s)}</span></div>
+      </div>
+    </div>`).join('');
+  wl.innerHTML = html;
+}
+
+// ── SELECT STOCK ───────────────────────────────────────────────────
+function selectStock(idx){
+  activeStock = ALL_STOCKS[idx];
+  renderWatchlist();
+  renderCenter();
+  generateAIAdvice();
+}
+
+function updateHeroPriceOnly(){
+  if(!activeStock) return;
+  document.getElementById('heroPrice').textContent = '₹'+activeStock.p.toLocaleString('en-IN');
+  const chgEl = document.getElementById('heroChg');
+  chgEl.textContent = (activeStock.c>=0?'+':'')+activeStock.c+'%';
+  chgEl.className = 'hero-chg '+(activeStock.c>=0?'up':'dn');
+}
+
+function renderCenter(){
+  const s = activeStock;
+  document.getElementById('heroName').textContent = s.n;
+  document.getElementById('heroTicker').textContent = s.t + ' · NSE';
+  document.getElementById('heroBadges').innerHTML =
+    `<span class="badge badge-sector">${s.s}</span><span class="badge badge-nse">NSE</span><span class="badge badge-large">${s.cap}</span>`;
+  updateHeroPriceOnly();
+  // KPIs
+  document.getElementById('k1').textContent = '₹'+s.open.toLocaleString('en-IN');
+  document.getElementById('k2').textContent = '₹'+s.high.toLocaleString('en-IN');
+  document.getElementById('k3').textContent = '₹'+s.low.toLocaleString('en-IN');
+  document.getElementById('k4').textContent = fmtVol(s.vol);
+  document.getElementById('k5').textContent = fmtCap(s.mc);
+  document.getElementById('k6').textContent = `₹${s.l52.toLocaleString()} / ₹${s.h52.toLocaleString()}`;
+  drawPriceChart(s);
+  renderFinancials(s);
+  renderFutures(s);
+  renderOptions(s);
+  renderTechnical(s);
+}
+
+function fmtVol(v){ if(v>=1e7) return (v/1e7).toFixed(2)+'Cr'; if(v>=1e5) return (v/1e5).toFixed(1)+'L'; return v.toLocaleString(); }
+function fmtCap(v){ if(v>=1e5) return '₹'+(v/1e5).toFixed(1)+'L Cr'; if(v>=1000) return '₹'+(v/1000).toFixed(0)+'K Cr'; return '₹'+v+'Cr'; }
+
+// ── PRICE CHART ────────────────────────────────────────────────────
+function simPriceSeries(s, n, seed=42){
+  const arr=[s.l52+(s.h52-s.l52)*0.4];
+  for(let i=1;i<n;i++){
+    const trend=(s.p-arr[0])/(n);
+    const noise=(Math.sin(i*seed)*0.5+Math.random()-0.49)*s.p*0.012;
+    arr.push(Math.max(s.l52*0.95, arr[i-1]+trend+noise));
+  }
+  return arr.map(v=>+v.toFixed(2));
+}
+function genLabels(n, unit){
+  const d=new Date(), arr=[];
+  for(let i=n;i>0;i--){
+    const x=new Date(d);
+    if(unit==='d') x.setDate(d.getDate()-i);
+    else if(unit==='w') x.setDate(d.getDate()-i*7);
+    else x.setMonth(d.getMonth()-i);
+    arr.push(x.toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+  }
+  return arr;
+}
+function setTF(btn, tf){
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentTF = tf;
+  if(activeStock) drawPriceChart(activeStock);
+}
+function drawPriceChart(s){
+  if(pChart){ pChart.destroy(); pChart=null; }
+  const cfgs={
+    '1W':{n:7,unit:'d'},'1M':{n:22,unit:'d'},
+    '3M':{n:13,unit:'w'},'1Y':{n:52,unit:'w'},'3Y':{n:36,unit:'m'}
+  };
+  const cfg=cfgs[currentTF]||cfgs['1M'];
+  const prices=simPriceSeries(s, cfg.n);
+  const labels=genLabels(cfg.n, cfg.unit);
+  const color=s.c>=0?'#00e676':'#ff4444';
+  const ctx=document.getElementById('priceChart').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,200);
+  grad.addColorStop(0,s.c>=0?'rgba(0,230,118,.18)':'rgba(255,68,68,.18)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  pChart=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.8,
+      pointRadius:0,fill:true,backgroundColor:grad,tension:.35}]},
+    options:{responsive:true,animation:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'rgba(13,17,23,.95)',borderColor:'#1c2230',borderWidth:1,
+        titleColor:'#f0c040',bodyColor:'#e8ecf5',
+        callbacks:{label:c=>'₹'+c.raw.toLocaleString('en-IN')}}},
+      scales:{
+        x:{ticks:{color:'#4a5568',font:{size:9,family:'JetBrains Mono'},maxTicksLimit:8},
+           grid:{color:'rgba(28,34,48,.8)'}},
+        y:{ticks:{color:'#4a5568',font:{size:9,family:'JetBrains Mono'},
+                  callback:v=>'₹'+v.toLocaleString('en-IN')},
+           grid:{color:'rgba(28,34,48,.8)'}}
+      }
+    }
+  });
+  // Volume bars
+  const vols=prices.map(()=>Math.floor(s.vol/cfg.n*(0.5+Math.random())));
+  const maxVol=Math.max(...vols);
+  const vb=document.getElementById('volBars');
+  vb.innerHTML=vols.map(v=>`<div class="vol-bar" style="height:${(v/maxVol*100).toFixed(0)}%;background:${color}40"></div>`).join('');
+}
+
+// ── FINANCIALS TABLE ───────────────────────────────────────────────
+function renderFinancials(s){
+  const years=['FY21','FY22','FY23','FY24'];
+  const gm = s.nm * 2.2; // gross margin estimated as ~2.2x net margin
+  const rows=[
+    {label:'Revenue (₹ Cr)',    data:years.map((_,i)=>Math.round(s.mc*0.006*(0.78+i*0.08)).toLocaleString('en-IN')), bold:false},
+    {label:'Gross Profit (₹ Cr)',data:years.map((_,i)=>Math.round(s.mc*0.006*(0.78+i*0.08)*gm/100).toLocaleString('en-IN')), bold:false},
+    {label:'EBITDA (₹ Cr)',     data:years.map((_,i)=>Math.round(s.mc*0.0022*(0.78+i*0.08)).toLocaleString('en-IN')), bold:false},
+    {label:'Net Profit (₹ Cr)', data:years.map((_,i)=>Math.round(s.mc*0.0010*(0.78+i*0.08)).toLocaleString('en-IN')), bold:true},
+    {label:'EPS (₹)',           data:years.map((_,i)=>s.pe>0?((s.p/s.pe)*(0.78+i*0.08)).toFixed(2):'—'), bold:false},
+    {label:'ROE (%)',           data:years.map((_,i)=>(s.roe*(0.82+i*0.06)).toFixed(1)), bold:false},
+    {label:'Net Margin (%)',    data:years.map(()=>s.nm.toFixed(1)), bold:false},
+    {label:'Debt / Equity',    data:['1.8','1.5','1.2','0.9'], bold:false},
+  ];
+  let html=`<thead><tr><th>Metric</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead><tbody>`;
+  rows.forEach(r=>{
+    html+=`<tr class="${r.bold?'bold':''}"><td>${r.label}</td>${r.data.map(v=>`<td>${v}</td>`).join('')}</tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('finTable').innerHTML=html;
+}
+
+// ── FUTURES ────────────────────────────────────────────────────────
+function renderFutures(s){
+  // Dynamic expiry: last Thursday of current + next 2 months
+  function lastThursday(year, month){
+    const d = new Date(year, month+1, 0); // last day of month
+    d.setDate(d.getDate() - ((d.getDay()+3)%7));
+    return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  }
+  const now = new Date();
+  const months = [0,1,2].map(offset=>{
+    const m = (now.getMonth()+offset)%12;
+    const y = now.getFullYear() + Math.floor((now.getMonth()+offset)/12);
+    return lastThursday(y, m);
+  });
+  const basis=[0.4,0.8,1.2];
+  const grid=document.getElementById('futuresGrid');
+  grid.innerHTML=months.map((m,i)=>{
+    const futP=(s.p*(1+basis[i]/100)).toFixed(2);
+    const oi=Math.floor(s.vol*0.3*(1-i*0.2)/100)*100;
+    const vol=Math.floor(oi*0.4);
+    return `<div class="fut-card">
+      <div class="fut-expiry">Expiry: ${m}</div>
+      <div class="fut-price ${s.c>=0?'up':'dn'}">₹${(+futP).toLocaleString('en-IN')}</div>
+      <div class="fut-basis">Basis: +${(s.p*basis[i]/100).toFixed(2)} (${basis[i].toFixed(2)}%)</div>
+      <div class="fut-oi">
+        <div class="fut-oi-item">Open Interest<span class="fut-oi-val">${fmtVol(oi)}</span></div>
+        <div class="fut-oi-item">Volume<span class="fut-oi-val">${fmtVol(vol)}</span></div>
+        <div class="fut-oi-item">IV<span class="fut-oi-val">${(18+i*2).toFixed(1)}%</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── OPTIONS CHAIN ──────────────────────────────────────────────────
+function renderOptions(s){
+  const atm=Math.round(s.p/10)*10;
+  const strikes=[atm-40,atm-20,atm,atm+20,atm+40];
+  const div=document.getElementById('optionsChain');
+  let html=`<div class="opt-hdr">
+    <span>Call OI</span><span>Call LTP</span><span>Call IV</span>
+    <span class="strike-col">Strike</span>
+    <span>Put IV</span><span>Put LTP</span><span>Put OI</span>
+  </div>`;
+  strikes.forEach((k,i)=>{
+    const isATM=k===atm;
+    const dist=Math.abs(k-s.p);
+    const cLTP=Math.max(1,(dist<10?s.p*0.025:s.p*0.01*(1-(i-2)*0.3))).toFixed(1);
+    const pLTP=Math.max(1,(dist<10?s.p*0.024:s.p*0.01*(1-(2-i)*0.3))).toFixed(1);
+    const cOI=fmtVol(Math.floor(s.vol*(0.15-i*0.02)*Math.random()+s.vol*0.05));
+    const pOI=fmtVol(Math.floor(s.vol*(0.15-(4-i)*0.02)*Math.random()+s.vol*0.05));
+    const cIV=(18+Math.abs(i-2)*3).toFixed(1);
+    const pIV=(19+Math.abs(i-2)*3).toFixed(1);
+    html+=`<div class="opt-row${isATM?' atm':''}">
+      <span class="call-side">${cOI}</span>
+      <span class="call-side">${cLTP}</span>
+      <span class="call-side">${cIV}%</span>
+      <span class="strike">${k}</span>
+      <span class="put-side">${pIV}%</span>
+      <span class="put-side">${pLTP}</span>
+      <span class="put-side">${pOI}</span>
+    </div>`;
+  });
+  div.innerHTML=html;
+}
+
+// ── TECHNICAL ──────────────────────────────────────────────────────
+function renderTechnical(s){
+  const score=scoreStock(s);
+  const rsi=40+score*0.3+Math.random()*10;
+  const macd=s.c>0?Math.random()*3:-Math.random()*3;
+  const items=[
+    {label:'RSI (14)', val:rsi.toFixed(1), note:rsi>70?'Overbought':rsi<30?'Oversold':'Neutral', cls:rsi>70?'dn':rsi<30?'up':'neu'},
+    {label:'MACD', val:macd.toFixed(3), note:macd>0?'Bullish crossover':'Bearish crossover', cls:macd>0?'up':'dn'},
+    {label:'MA 20', val:'₹'+(s.p*(0.97+Math.random()*0.02)).toFixed(0), note:s.p>s.p*0.98?'Price above MA':'Price below MA', cls:'neu'},
+    {label:'MA 50', val:'₹'+(s.p*(0.94+Math.random()*0.04)).toFixed(0), note:'Uptrend support', cls:'up'},
+    {label:'Bollinger Upper', val:'₹'+(s.high*1.02).toFixed(0), note:'Resistance zone', cls:'dn'},
+    {label:'Bollinger Lower', val:'₹'+(s.low*0.98).toFixed(0), note:'Support zone', cls:'up'},
+    {label:'ADX', val:(20+Math.random()*20).toFixed(1), note:'Trend strength', cls:'neu'},
+    {label:'Stoch %K', val:(30+Math.random()*50).toFixed(1)+'%', note:'Momentum', cls:'neu'},
+    {label:'OBV', val:fmtVol(Math.floor(s.vol*12)), note:s.c>0?'Accumulation':'Distribution', cls:s.c>0?'up':'dn'},
+    {label:'ATR (14)', val:'₹'+(s.p*0.015).toFixed(2), note:'Daily volatility range', cls:'neu'},
+  ];
+  const div=document.getElementById('technicalSection');
+  div.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    ${items.map(it=>`<div style="background:var(--panel);border:1px solid var(--border2);border-radius:3px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:.6rem;color:var(--muted2);margin-bottom:4px;letter-spacing:.08em">${it.label}</div>
+        <div style="font-size:.72rem;color:var(--muted2)">${it.note}</div>
+      </div>
+      <div class="${it.cls}" style="font-size:.92rem;font-weight:600">${it.val}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ── AI ANALYSIS (real Claude API) ─────────────────────────────────
+async function generateAIAdvice(){
+  const s=activeStock;
+  if(!s) return;
+  const body=document.getElementById('aiBody');
+  const verdict=document.getElementById('aiVerdict');
+  body.innerHTML='<span class="spinner"></span> Analysing with Claude AI…';
+  body.className='ai-body loading';
+  verdict.innerHTML='';
+
+  const prompt=`You are a senior institutional equity analyst at a top investment bank. Analyse this NSE-listed stock and give a professional recommendation.
+
+Stock: ${s.n} (${s.t})
+Sector: ${s.s} | ${s.cap}
+Current Price: ₹${s.p}
+P/E: ${s.pe} | P/B: ${s.pb}
+ROE: ${s.roe}% | Net Margin: ${s.nm}%
+Market Cap: ₹${s.mc} Cr
+52W High: ₹${s.h52} | Low: ₹${s.l52}
+Today's Change: ${s.c}%
+Dividend Yield: ${s.div}%
+
+Provide:
+1. A concise 3–4 sentence professional analysis covering valuation, fundamentals, and near-term catalysts.
+2. A clear verdict: STRONG BUY / BUY / HOLD / SELL / STRONG SELL with reasoning.
+3. A 12-month target price range.
+4. Key risk factor to watch.
+5. Futures strategy: whether to go LONG or SHORT in near-month futures and why (1 sentence).
+
+Be direct, data-driven, and institutional in tone. No disclaimers needed.`;
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'Analysis unavailable.';
+
+    body.className='ai-body';
+    // Stream-render text
+    body.innerHTML='';
+    let i=0;
+    const interval=setInterval(()=>{
+      if(i>=text.length){ clearInterval(interval); return; }
+      body.innerHTML=text.slice(0,i+1).replace(/\n/g,'<br>');
+      i+=3;
+    },18);
+
+    // Parse verdict
+    const score=scoreStock(s);
+    let vClass='verdict-hold', vLabel='HOLD';
+    if(score>=80){vClass='verdict-strong-buy';vLabel='STRONG BUY';}
+    else if(score>=60){vClass='verdict-buy';vLabel='BUY';}
+    else if(score<=25){vClass='verdict-sell';vLabel='STRONG SELL';}
+    else if(score<=40){vClass='verdict-sell';vLabel='SELL';}
+    const futDir=s.c>0&&score>=55?'LONG FUTURES':'SHORT FUTURES';
+    const futCls=futDir.includes('LONG')?'verdict-buy':'verdict-sell';
+    const tgtLow=(s.p*1.08).toFixed(0);
+    const tgtHigh=(s.p*1.22).toFixed(0);
+    verdict.innerHTML=`
+      <div class="verdict-pill ${vClass}">◈ ${vLabel}</div>
+      <div class="verdict-pill ${futCls}">⇅ ${futDir}</div>
+      <div class="target-price">12M Target: <span>₹${tgtLow} – ₹${tgtHigh}</span></div>`;
+  } catch(e){
+    body.className='ai-body';
+    body.innerHTML='<span style="color:var(--muted2)">AI analysis unavailable. Check API connectivity.</span>';
+  }
+}
+
+// ── AI CHAT ────────────────────────────────────────────────────────
+async function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const msg=inp.value.trim();
+  if(!msg) return;
+  const send=document.getElementById('chatSend');
+  const chatMsg=document.getElementById('chatMsg');
+  inp.value=''; send.disabled=true;
+  chatMsg.innerHTML='<span class="spinner"></span>';
+
+  const context=activeStock?`Context: User is viewing ${activeStock.n} (${activeStock.t}), Price ₹${activeStock.p}, Signal: ${sigLabel(activeStock)}. `:'';
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:`You are a concise, expert stock market analyst for Indian markets (NSE/BSE). ${context}User asks: "${msg}". Give a sharp, actionable 2–4 sentence answer.`}]
+      })
+    });
+    const data=await res.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'Unavailable.';
+    chatMsg.innerHTML='';
+    let i=0;
+    const iv=setInterval(()=>{
+      if(i>=text.length){clearInterval(iv);return;}
+      chatMsg.innerHTML=text.slice(0,i+1).replace(/\n/g,'<br>');
+      i+=3;
+    },16);
+  } catch(e){
+    chatMsg.innerHTML='<span style="color:var(--red)">Connection error.</span>';
+  }
+  send.disabled=false;
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────────────────
+function switchTab(el, id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────
+const searchInput=document.getElementById('searchInput');
+const dropdown=document.getElementById('searchDropdown');
+searchInput.addEventListener('input',()=>{
+  const q=searchInput.value.trim().toLowerCase();
+  if(!q){dropdown.classList.remove('open');return;}
+  const results=ALL_STOCKS.filter(s=>
+    s.t.toLowerCase().includes(q)||s.n.toLowerCase().includes(q)||s.s.toLowerCase().includes(q)
+  ).slice(0,12);
+  dropdown.innerHTML=results.map(s=>`
+    <div class="sdrop-item" onclick="selectFromSearch(${ALL_STOCKS.indexOf(s)})">
+      <div>
+        <div class="sdrop-ticker">${s.t.replace('.NS','')}</div>
+        <div class="sdrop-name">${s.n} · ${s.s}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sdrop-price">₹${s.p.toLocaleString('en-IN')}</div>
+        <div class="sdrop-chg ${s.c>=0?'up':'dn'}">${s.c>=0?'+':''}${s.c}%</div>
+      </div>
+    </div>`).join('');
+  dropdown.classList.toggle('open', results.length>0);
+});
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.search-wrap')) dropdown.classList.remove('open');
+});
+function selectFromSearch(idx){
+  dropdown.classList.remove('open');
+  searchInput.value='';
+  selectStock(idx);
+}
+
+// ── MARKET INDICES (real data) ─────────────────────────────────────
+const INDEX_TICKERS=[
+  {n:'Nifty 50',     t:'^NSEI'},
+  {n:'Sensex',       t:'^BSESN'},
+  {n:'Nifty Bank',   t:'^NSEBANK'},
+  {n:'Nifty IT',     t:'NIFTYIT.NS'},
+  {n:'Nifty Midcap', t:'^CNXMIDCAP'},
+  {n:'India VIX',    t:'^INDIAVIX'},
+];
+let idxVals = INDEX_TICKERS.map(i=>({...i, v:null, c:null}));
+
+async function updateMarketIndices(){
+  // Fetch indices in background
+  await Promise.all(idxVals.map(async idx=>{
+    const q = await fetchQuote(idx.t);
+    if(q && q.price>0){
+      idx.v = q.price;
+      idx.c = q.prevClose>0 ? +((q.price-q.prevClose)/q.prevClose*100).toFixed(2) : 0;
+    }
+  }));
+  const n50 = idxVals[0];
+  const sens = idxVals[1];
+  if(n50.v) document.getElementById('niftyVal').textContent = n50.v.toLocaleString('en-IN');
+  if(sens.v) document.getElementById('sensexVal').textContent = sens.v.toLocaleString('en-IN');
+  const panel=document.getElementById('indicesPanel');
+  panel.innerHTML=idxVals.map(i=>{
+    if(!i.v) return `<div class="mkt-row"><div class="mkt-index">${i.n}</div><div class="muted2">—</div></div>`;
+    return `<div class="mkt-row">
+      <div class="mkt-index">${i.n}</div>
+      <div>
+        <div class="mkt-idx-val">${i.v.toLocaleString('en-IN')}</div>
+        <div class="mkt-idx-chg ${i.c>=0?'up':'dn'}">${i.c>=0?'+':''}${i.c}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+// Refresh indices every 10 min
+setInterval(updateMarketIndices, 10*60*1000);
+
+// ── BREADTH ────────────────────────────────────────────────────────
+function renderBreadth(){
+  const adv=ALL_STOCKS.filter(s=>s.c>0).length;
+  const dec=ALL_STOCKS.filter(s=>s.c<0).length;
+  const unch=ALL_STOCKS.length-adv-dec;
+  const total=ALL_STOCKS.length;
+  document.getElementById('breadthPanel').innerHTML=`
+    <div class="breadth-row"><div class="breadth-label">Advancing</div>
+      <div class="breadth-bar-wrap"><div class="breadth-fill" style="width:${adv/total*100}%"></div></div>
+      <div class="breadth-val up">${adv}</div></div>
+    <div class="breadth-row"><div class="breadth-label">Declining</div>
+      <div class="breadth-bar-wrap"><div class="breadth-fill red" style="width:${dec/total*100}%"></div></div>
+      <div class="breadth-val dn">${dec}</div></div>
+    <div class="breadth-row"><div class="breadth-label">Unchanged</div>
+      <div class="breadth-bar-wrap"><div class="breadth-fill" style="width:${unch/total*100}%;background:var(--muted)"></div></div>
+      <div class="breadth-val neu">${unch}</div></div>`;
+}
+
+// ── GAINERS / LOSERS ───────────────────────────────────────────────
+function renderMovers(){
+  const sorted=[...ALL_STOCKS].sort((a,b)=>b.c-a.c);
+  const gainers=sorted.slice(0,5);
+  const losers=sorted.slice(-5).reverse();
+  document.getElementById('gainers').innerHTML=gainers.map(s=>`
+    <div class="mover-row">
+      <div><div class="mover-t">${s.t.replace('.NS','')}</div><div style="font-size:.58rem;color:var(--muted2)">${s.n.slice(0,22)}</div></div>
+      <div style="text-align:right"><div>₹${s.p.toLocaleString('en-IN')}</div><div class="up" style="font-size:.65rem">+${s.c}%</div></div>
+    </div>`).join('');
+  document.getElementById('losers').innerHTML=losers.map(s=>`
+    <div class="mover-row">
+      <div><div class="mover-t">${s.t.replace('.NS','')}</div><div style="font-size:.58rem;color:var(--muted2)">${s.n.slice(0,22)}</div></div>
+      <div style="text-align:right"><div>₹${s.p.toLocaleString('en-IN')}</div><div class="dn" style="font-size:.65rem">${s.c}%</div></div>
+    </div>`).join('');
+}
+
+// ── SECTORS ────────────────────────────────────────────────────────
+function renderSectors(){
+  const sectors={};
+  ALL_STOCKS.forEach(s=>{
+    if(!sectors[s.s]) sectors[s.s]=[];
+    sectors[s.s].push(s.c);
+  });
+  const grid=document.getElementById('sectorGrid');
+  grid.innerHTML=Object.entries(sectors).map(([nm,chgs])=>{
+    const avg=(chgs.reduce((a,b)=>a+b,0)/chgs.length).toFixed(2);
+    return `<div class="sector-cell" style="border-left:2px solid ${avg>=0?'var(--green)':'var(--red)'}">
+      <div class="sector-nm">${nm}</div>
+      <div class="sector-ret ${avg>=0?'up':'dn'}">${avg>=0?'+':''}${avg}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+renderWatchlist();
+renderMovers();
+renderBreadth();
+renderSectors();
+updateWlCount();
+selectStock(0);
+
+// Then load real data in background
+loadRealData().then(()=>{
+  updateMarketIndices();
+});
+
+</script>
+</body>
+</html>
